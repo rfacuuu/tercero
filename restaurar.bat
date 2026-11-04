@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 if not exist instalacion.txt (
   echo No hay instalacion registrada. Nada que restaurar.
@@ -7,7 +7,8 @@ if not exist instalacion.txt (
   exit /b 1
 )
 set /p TERCERO_DIR=<instalacion.txt
-taskkill /IM tercero.exe /F >nul 2>&1
+set "TD=!TERCERO_DIR!"
+powershell -NoProfile -Command "Get-Process tercero -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($env:TD) } | Stop-Process -Force" >nul 2>&1
 if exist "!TERCERO_DIR!\resources\app.asar.bak" (
   copy /y "!TERCERO_DIR!\resources\app.asar.bak" "!TERCERO_DIR!\resources\app.asar" >nul
   echo Version anterior restaurada.
