@@ -29,4 +29,4 @@ El update pesa ~40 KB (solo `app.asar`), no los 151 MB del paquete completo.
   producto (aviso literal dentro de la app).
 - Nada se graba ni se publica por defecto.
 
-`tercero-src.zip` tiene el codigo fuente completo de esta version.
+`tercero-src.zip.b64` tiene el codigo fuente (base64; decodificar con `certutil -decode tercero-src.zip.b64 tercero-src.zip`) completo de esta version.
