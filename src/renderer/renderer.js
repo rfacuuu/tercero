@@ -79,12 +79,12 @@ $('b-pausa').onclick = async () => {
 };
 $('b-posponer').onclick = async () => { if(!selectedSource)return;await window.tercero.snooze(10); setEstado('Ideas silenciadas 10 min', 'paused'); setExpr('dormida'); };
 $('b-fuente').onclick = abrirFuentes;
-$('b-stop').onclick = async () => {pendingQuestion=null;$('v-sugerencias').replaceChildren(); await window.tercero.stop(); capturando = false;selectedSource=null;goView('home'); setEstado('Sin captura'); setExpr('dormida'); $('hola').textContent = HOLA_IDLE; };
+$('b-stop').onclick = async () => {pendingQuestion=null;comments=[];$('v-sugerencias').replaceChildren(); await window.tercero.stop(); capturando = false;selectedSource=null;goView('home'); setEstado('Sin captura'); setExpr('dormida'); $('hola').textContent = HOLA_IDLE; };
 
 $('b-prefs').onclick = async () => {
   closeViews();show('bienvenida',false);show('v-sugerencias',false);$('panel').classList.remove('source','options','context');$('panel').classList.add('open','config');layout();
   currentView='config';refreshHome();layout();prefs = await window.tercero.getPrefs();
-  $('p-dock').value=prefs.dockMode||'floating';$('p-pin').checked=!!prefs.panelPinned;$('p-details').checked=!!prefs.showDetails;$('p-shadow').checked=!!prefs.smallShadow;
+  $('p-companion').value=prefs.companionMode||'explore';$('p-motion').checked=!!prefs.reduceMotion;$('p-comments').value=prefs.commentPlacement||'edge';refreshSelects();$('p-dock').value=prefs.dockMode||'floating';$('p-pin').checked=!!prefs.panelPinned;$('p-details').checked=!!prefs.showDetails;$('p-shadow').checked=!!prefs.smallShadow;
   $('p-interval').value = prefs.captureIntervalSec;
   $('p-frecuencia').value = prefs.frecuenciaIntervencion;
   $('p-retencion').value = prefs.frameRetention;
@@ -93,7 +93,7 @@ $('b-prefs').onclick = async () => {
   $('consent-estado').textContent = prefs.aiMode==='meta'&&prefs.aiConsent ? 'IA activa con permiso. Volver a Demo lo revoca.' : 'En Demo no se envían capturas.';show('meta-consent-view',false);
   const ai = await window.tercero.aiStatus();
   $('key-estado').textContent = ai.keyStored ? 'hay una clave guardada (cifrada)' : '';
-  show('v-prefs', true);
+  show('v-prefs', true);refreshSelects();
 };
 $('p-modo').onchange=()=>{if($('p-modo').value==='meta'){show('meta-consent-view',true);$('consent-estado').textContent='Requiere tu permiso en este equipo.';}else{show('meta-consent-view',false);}};
 $('b-no-consent').onclick=()=>{$('p-modo').value='mock';show('meta-consent-view',false);};
@@ -108,7 +108,7 @@ $('b-guardar-prefs').onclick = async () => {
   if($('p-modo').value==='meta'&&!(prefs.aiMode==='meta'&&prefs.aiConsent)){show('meta-consent-view',true);return;}
   prefs = await window.tercero.setPrefs({
     aiConsent:$('p-modo').value==='meta'&&!!prefs.aiConsent,
-    dockMode:$('p-dock').value,panelPinned:$('p-pin').checked,showDetails:$('p-details').checked,smallShadow:$('p-shadow').checked,
+    companionMode:$('p-companion').value,reduceMotion:$('p-motion').checked,commentPlacement:$('p-comments').value,dockMode:$('p-dock').value,panelPinned:$('p-pin').checked,showDetails:$('p-details').checked,smallShadow:$('p-shadow').checked,
     captureIntervalSec: parseInt($('p-interval').value) || 20,
     frecuenciaIntervencion: $('p-frecuencia').value,
     frameRetention: $('p-retencion').value,
@@ -144,24 +144,21 @@ async function enviarNota() {
 $('b-chat').onclick = enviarNota;
 $('chat-input').addEventListener('keydown', e => { if (e.key === 'Enter') enviarNota(); });
 
-window.tercero.onSuggestion(s => {
-  setExpr('emocionada', 4000);goView('suggestion');
-  if(s.tipo==='pregunta'){pendingQuestion={id:s.id,texto:s.texto};$('chat-input').placeholder='Responder a esta pregunta...';}
-  const c = document.createElement('div');
-  c.className = 'card';
-  c.innerHTML = `<div class="tipo">${s.tipo === 'pregunta' ? 'Pregunta' : 'Sugerencia'}${s.mock ? ' · demo' : ''}</div><div class="txt"></div>
-    <div class="row feedback"><button class="primary" data-u="1">Me sirvió</button><button data-u="0">No</button>
-    <button data-pos="1">Ahora no</button></div>`;
-  c.querySelector('.txt').textContent = s.texto;
-  c.querySelector('[data-u="1"]').onclick = () => { window.tercero.feedback(s.id, true); c.remove();if(!$('v-sugerencias').children.length)goView('home'); };
-  c.querySelector('[data-u="0"]').onclick = () => { window.tercero.feedback(s.id, false); c.remove();if(!$('v-sugerencias').children.length)goView('home'); };
-  c.querySelector('[data-pos]').onclick = () => { window.tercero.snooze(10); c.remove();if(!$('v-sugerencias').children.length)goView('home'); };
-  $('v-sugerencias').replaceChildren(c);
-  show('bienvenida',false);
-  if(s.tipo==='pregunta'||prefs?.panelPinned)$('panel').classList.add('open');
-  layout();setTimeout(()=>c.querySelector('.feedback')?.classList.add('ready'),2500);
-  c.classList.add('reveal');
-});
+let comments=[];
+function addComment(s){comments.push(s);if(comments.length>12)comments.shift();renderComments();setExpr('emocionada',2500);goView('suggestion');$('panel').classList.add('open');layout();}
+function renderComments(){const list=$('v-sugerencias');list.replaceChildren();if(!comments.length){list.textContent='No hay comentarios pendientes.';return;}
+ const info=document.createElement('div');info.className='comments-explainer';info.textContent='Comentarios flotantes. Mover desde la cabecera; no se anclan a objetos de la pieza.';list.append(info);
+ for(const s of comments){const card=document.createElement('div');card.className='comment'+(s.collapsed?' collapsed':'');card.dataset.id=s.id;
+ const head=document.createElement('div');head.className='comment-header';const icon=document.createElement('img');icon.src='assets/cursor/ceramica.png';const title=document.createElement('strong');title.textContent='Tercero'+(s.mock?' · Demo':'');const min=document.createElement('button');min.textContent=s.collapsed?'+':'−';min.title=s.collapsed?'Abrir comentario':'Minimizar comentario';min.onclick=()=>{s.collapsed=!s.collapsed;renderComments();};const close=document.createElement('button');close.textContent='✓';close.title='Resolver comentario';close.onclick=()=>{comments=comments.filter(x=>x!==s);renderComments();};head.append(icon,title,min,close);
+ const body=document.createElement('div');body.className='comment-body';const tipo=document.createElement('div');tipo.className='tipo';tipo.textContent=s.tipo==='pregunta'?'Pregunta necesaria':'Sugerencia';const txt=document.createElement('div');txt.className='txt';txt.textContent=s.texto;const row=document.createElement('div');row.className='row';
+ for(const [label,fn] of [['Me sirvió',()=>{window.tercero.feedback(s.id,true);s.useful=true;}],['No me sirve',()=>{window.tercero.feedback(s.id,false);s.useful=false;}],['Contestar',()=>{s.replyOpen=!s.replyOpen;renderComments();}]]){const bt=document.createElement('button');bt.textContent=label;bt.onclick=fn;row.append(bt);}body.append(tipo,txt,row);
+ for(const e of s.thread||[]){const item=document.createElement('div');item.className='thread-entry'+(e.ai?' ai':'');item.textContent=(e.ai?'Tercero: ':'Vos: ')+e.text;body.append(item);}
+ if(s.replyOpen){const box=document.createElement('div');box.className='reply-box';const input=document.createElement('textarea');input.className='reply-input';input.placeholder='Contestar a este comentario…';input.maxLength=800;input.value=s.draft||'';input.oninput=()=>s.draft=input.value;const send=document.createElement('button');send.className='primary';send.textContent=s.sending?'Enviando…':'Enviar respuesta';send.disabled=!!s.sending;const status=document.createElement('div');status.className='reply-status';status.textContent=s.error||(s.mock?'Demo: guarda un hilo local, no consulta IA.':'Meta recibirá tu texto y el contexto reciente. No se envía una captura nueva.');
+ send.onclick=async()=>{const value=input.value.trim();if(!value||s.sending)return;
+ prefs=await window.tercero.getPrefs();const activeAi=await window.tercero.aiStatus();if(activeAi.mode==='meta'&&!prefs.textConsent){if(!window.confirm('Para contestar, se enviará tu texto y el contexto reciente de esta sesión a Meta. No se toma una captura nueva. ¿Permitís este envío y las respuestas siguientes?'))return;prefs=await window.tercero.setPrefs({textConsent:true});}
+ s.sending=true;s.error='';renderComments();const result=await window.tercero.reply({id:s.id,text:value});s.sending=false;if(result.ok){s.thread=s.thread||[];s.thread.push({text:value},{text:result.entry.texto,ai:true});s.draft='';}else s.error=result.error||'No se pudo responder.';renderComments();};box.append(input,send,status);body.append(box);}
+ card.append(head,body);list.append(card);}}
+window.tercero.onSuggestion(addComment);
 window.tercero.onPipeline(message=>{if(selectedSource)$('session-status').textContent=message;});
 window.tercero.onError(m => { $('v-error').textContent = m; });
 
@@ -193,7 +190,7 @@ function goView(view){
 }
 function applyUi(){document.body.classList.toggle('details',!!prefs.showDetails);document.body.classList.toggle('shadow',!!prefs.smallShadow);document.body.classList.toggle('dock',prefs.dockMode==='top');$('b-pin').setAttribute('aria-pressed',String(!!prefs.panelPinned));$('b-pin').textContent=prefs.panelPinned?'Fijado':'Fijar';}
 function layout(){refreshHome();const panel=$('panel').classList.contains('open');document.body.classList.toggle('idle',!panel);window.tercero.layout({panel,settings:currentView==='config',dock:prefs?.dockMode==='top',details:!!prefs?.showDetails,view:currentView==='home'?(selectedSource?'active':'empty'):currentView});}
-function togglePanel(){if(!$('panel').classList.contains('open'))goView('home');$('panel').classList.toggle('open');layout();}
+function togglePanel(){if(!$('panel').classList.contains('open'))goView(comments.length?'suggestion':'home');$('panel').classList.toggle('open');layout();}
 $('b-contexto').onclick=()=>{for(const key of ['objetivo','estrategia','recursos','plazo'])$('f-'+key).value=prefs[key]||'';goView('context');};
 $('b-cerrar-setup').onclick=()=>goView('home');$('sources-back').onclick=()=>goView('home');$('settings-back').onclick=()=>goView('home');
 $('home-start').onclick=abrirFuentes;$('session-change').onclick=abrirFuentes;$('session-pause').onclick=()=>{$('b-pausa').click();setTimeout(()=>refreshHome(),100);};
@@ -236,6 +233,11 @@ $('b-cerrar-app').onclick = (e) => { e.stopPropagation(); window.tercero.quitApp
   });
 })();
 
+function refreshSelects(){document.querySelectorAll('.custom-select').forEach(w=>{const select=w.previousElementSibling;w.querySelector('.select-trigger').textContent=(select.selectedOptions[0]?.textContent||'Elegir')+'  ⌄';w.querySelectorAll('[data-value]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.value===select.value)));});}
+function setupSelects(){document.querySelectorAll('select:not([disabled])').forEach(select=>{select.hidden=true;const w=document.createElement('div');w.className='custom-select';const bt=document.createElement('button');bt.type='button';bt.className='select-trigger';bt.setAttribute('aria-label',select.previousElementSibling?.textContent||'Elegir');bt.setAttribute('aria-expanded','false');const menu=document.createElement('div');menu.className='select-menu';menu.setAttribute('role','listbox');for(const opt of select.options){const item=document.createElement('button');item.type='button';item.dataset.value=opt.value;item.setAttribute('role','option');item.textContent=opt.textContent;item.onclick=()=>{select.value=opt.value;select.dispatchEvent(new Event('change'));w.classList.remove('open');bt.setAttribute('aria-expanded','false');refreshSelects();};menu.append(item);}bt.onclick=()=>{const on=!w.classList.contains('open');document.querySelectorAll('.custom-select.open').forEach(x=>x.classList.remove('open'));w.classList.toggle('open',on);bt.setAttribute('aria-expanded',String(on));};w.append(bt,menu);select.after(w);});refreshSelects();}
+setupSelects();
+// Header drag moves the floating comment panel, never the underlying design.
+$('panel-top').addEventListener('mousedown',e=>{if(e.target.closest('button')||e.button!==0)return;const sx=e.screenX,sy=e.screenY,wx=window.screenX,wy=window.screenY;const move=v=>window.tercero.dragTo(wx+v.screenX-sx,wy+v.screenY-sy);const up=()=>{document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',up);};document.addEventListener('mousemove',move);document.addEventListener('mouseup',up);});
 init();
 
 window.tercero.onTrayPaused(() => {capturando=false;setEstado('pausada','paused');refreshHome();$('b-pausa').textContent='Reanudar';$('hola').textContent=HOLA_PAUSA;setExpr('dormida');});

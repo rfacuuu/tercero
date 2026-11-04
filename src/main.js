@@ -9,6 +9,7 @@ const { spawn } = require('child_process');
 const prefs = require('./prefs');
 const sessionLog = require('./session-log');
 const ai = require('./ai');
+const companion=require('./companion');
 
 let tray = null;
 let updateBusy = false;
@@ -68,7 +69,7 @@ function createHud() {
     resizable: false, hasShadow: false, focusable: true,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
   });
-  hud.setAlwaysOnTop(true, 'screen-saver');
+  hud.setAlwaysOnTop(true, 'screen-saver');hud.setContentProtection(true);
   hud.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
   hud.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   hud.webContents.once('did-finish-load',()=>{if(app.isPackaged&&process.platform==='win32'){try{const root=path.dirname(path.dirname(process.execPath));const dir=path.join(root,'update-logs');fs.mkdirSync(dir,{recursive:true});fs.appendFileSync(path.join(dir,'app-start.jsonl'),JSON.stringify({time:new Date().toISOString(),version:app.getVersion(),pid:process.pid,event:'hud-loaded'})+'\n');}catch{}}});
@@ -125,6 +126,8 @@ function setupDisplayMediaHandler() {
 }
 
 function stopCapture() {
+  workEpoch++;companion.setState('pausa');
+  companion.setState('pausa');
   if (captureTimer) { clearInterval(captureTimer); captureTimer = null; }
   if (captureWin) captureWin.webContents.send('capture:stop-stream');
 }
@@ -137,11 +140,15 @@ function scheduleCapture() {
   captureTimer = setInterval(tickCapture, intervalMs);
 }
 
-function pipeline(message){if(hud&&!hud.isDestroyed())hud.webContents.send('hud:pipeline',message);}
+function pipeline(message){companion.setState(/Analizando con Meta/.test(message)?'analizando':/Demo|Preparando respuesta/.test(message)?'pensando':/pausa|permiso|clave|No se pudo/.test(message)?'pausa':'acompanando');if(hud&&!hud.isDestroyed())hud.webContents.send('hud:pipeline',message);}
 async function tickCapture() {
-  if (paused || Date.now() < snoozedUntil || !captureWin) return;
+  if (paused || Date.now() < snoozedUntil || !captureWin || analysisBusy || replyBusy) return;
+  analysisBusy=true;const epoch=workEpoch;companion.hide(true);
   try {
+    await new Promise(r=>setTimeout(r,75));
     const jpeg = await captureWin.webContents.executeJavaScript('window.terceroCapture && window.terceroCapture.grabFrame()');
+    companion.hide(false);
+    if(epoch!==workEpoch||paused||!currentSourceId)return;
     if (!jpeg){pipeline('Esperando imagen de la ventana…');return;}
     if (!lastFrame) { lastFrame = jpeg;pipeline('Ventana lista. Espero un cambio para comentar.'); if (TEST) fs.appendFileSync('/tmp/tick-errors.log', new Date().toISOString() + ' baseline\n'); return; } // primer frame = referencia, sin IA
     const changed = sessionLog.frameChanged(lastFrame, jpeg);
@@ -153,17 +160,19 @@ async function tickCapture() {
     if(ai.status(p).mode==='meta'&&!p.aiConsent){pipeline('Meta necesita tu permiso en Ajustes.');return;}if(ai.status(p).mode==='meta'&&!ai.status(p).metaReady){pipeline('Meta necesita una clave guardada en Ajustes.');return;}pipeline(ai.status(p).mode==='meta'?'Analizando con Meta…':'Preparando una idea de Demo…'); // sin consentimiento, nada sale de la PC
     const entry = await ai.analyzeFrame(jpeg, p, sessionLog.recent());
     if (TEST) fs.appendFileSync('/tmp/tick-errors.log', new Date().toISOString() + ' ai-result=' + JSON.stringify(entry) + '\n');
+    if(epoch!==workEpoch)return;
     if(!entry)pipeline('Analizado. No hay una sugerencia útil ahora.');
     if (entry) {pipeline('Nueva idea para tu diseño.'); // null = el criterio (mock o Meta) decidio no intervenir: no molestar
       sessionLog.add({ ts: Date.now(), kind: 'suggestion', ...entry, frameKept: prefs.get().frameRetention === 'guardar-local' });
-      hud.webContents.send('hud:suggestion', entry);
+      hud.webContents.send('hud:suggestion', entry);if(prefs.get().commentPlacement==='near'){const c=screen.getCursorScreenPoint(),a=screen.getDisplayNearestPoint(c).workArea,b=hud.getBounds();hud.setPosition(Math.max(a.x,Math.min(a.x+a.width-b.width,c.x+35)),Math.max(a.y,Math.min(a.y+a.height-b.height,c.y+35)));}
     }
   } catch (e) {
     pipeline('No se pudo analizar. Revisá el error.');hud.webContents.send('hud:error', String(e && e.message || e));
     if (TEST) fs.appendFileSync('/tmp/tick-errors.log', new Date().toISOString() + ' ' + String(e && e.stack || e) + '\n');
-  }
+  }finally{analysisBusy=false;companion.hide(false);}
 }
 
+let analysisBusy=false,replyBusy=false,workEpoch=0;
 const TEST = process.argv.includes('--test-capture');
 let testWin = null;
 function createTestWindow() {
@@ -217,11 +226,12 @@ app.whenReady().then(() => {
   setupDisplayMediaHandler();
   createHud();
   createCaptureWindow();
+  companion.init(()=>prefs.get());
   if (!SMOKE && !TEST) createTray();
   if (TEST) { createTestWindow(); setTimeout(runCaptureTest, 7000); }
 });
 
-app.on('before-quit', () => { stopCapture(); if (tray) {tray.destroy();tray=null;} });
+app.on('before-quit', () => { companion.destroy();stopCapture(); if (tray) {tray.destroy();tray=null;} });
 
 app.on('window-all-closed', () => { stopCapture(); app.quit(); });
 
@@ -232,7 +242,7 @@ ipcMain.handle('sources:list', async () => {
 });
 
 ipcMain.handle('capture:start', async (_e, sourceId) => {
-  currentSourceId = sourceId; paused = false;lastFrame=null;snoozedUntil=0;
+  workEpoch++;currentSourceId = sourceId; paused = false;lastFrame=null;snoozedUntil=0;
   captureWin.webContents.send('capture:start-stream', sourceId);
   sessionLog.add({ ts: Date.now(), kind: 'session-start', sourceId });
   scheduleCapture();
@@ -245,7 +255,7 @@ ipcMain.handle('capture:stop', () => { currentSourceId = null; stopCapture(); se
 
 ipcMain.handle('hud:snooze', (_e, minutes) => { snoozedUntil = Date.now() + Math.max(1, minutes || 10) * 60000; return { snoozedUntil }; });
 ipcMain.handle('prefs:get', () => prefs.get());
-ipcMain.handle('prefs:set', (_e, patch) => { if(patch.aiMode==='mock')patch.aiConsent=false;const p = prefs.set(patch); scheduleCapture(); return p; });
+ipcMain.handle('prefs:set', (_e, patch) => { if(patch.aiMode==='mock'){patch.aiConsent=false;patch.textConsent=false;workEpoch++;}const p = prefs.set(patch); scheduleCapture(); return p; });
 ipcMain.handle('session:recent', () => sessionLog.recent(50));
 ipcMain.handle('report:draft', () => sessionLog.buildPortfolioDraft(prefs.get()));
 ipcMain.handle('hud:feedback', (_e, id, useful) => { sessionLog.addFeedback(id, useful); return { ok: true }; });
@@ -287,3 +297,12 @@ ipcMain.handle('ai:clear-key', () => { metaKey = ''; try { require('fs').unlinkS
 
 ipcMain.handle('app:version', () => app.getVersion());
 ipcMain.handle('ui:draft', () => {try{const f=path.join(app.getPath('userData'),'pending-ui-draft.json');const d=JSON.parse(fs.readFileSync(f,'utf8'));fs.unlinkSync(f);return d;}catch{return null;}});
+
+ipcMain.handle('comment:reply',async(_e,value)=>{
+ const p=prefs.get(),text=String(value?.text||'').trim().slice(0,800),id=String(value?.id||'');if(!text)return {ok:false,error:'Escribí una respuesta.'};
+ if(analysisBusy||replyBusy)return {ok:false,error:'Esperá a que termine el análisis actual.'};
+ const parent=sessionLog.recent(200).find(e=>e.id===id&&e.kind==='suggestion');if(!parent)return {ok:false,error:'Ese comentario ya no está disponible.'};
+ if(ai.status(p).mode==='meta'&&(!p.aiConsent||!p.textConsent))return {ok:false,error:'Falta permiso para enviar tu respuesta a Meta.'};
+ replyBusy=true;const epoch=workEpoch;sessionLog.add({ts:Date.now(),kind:'nota',texto:text,replyTo:id});pipeline('Preparando respuesta…');
+ try{const r=await ai.reply(text,parent,p,sessionLog.recent(20));if(epoch!==workEpoch)return {ok:false,error:'La sesión cambió. La respuesta anterior no se agregó.'};const entry={id:'sg-'+Date.now(),kind:'suggestion',ts:Date.now(),...r,replyTo:id};sessionLog.add(entry);pipeline('Respuesta lista.');return {ok:true,entry};}catch(e){pipeline('No se pudo responder.');return {ok:false,error:String(e.message)};}finally{replyBusy=false;}
+});

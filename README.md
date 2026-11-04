@@ -1,3 +1,11 @@
+## v0.2.7
+
+Mini cursor B cerámico sin rostro, proporción fija, rotación direccional, acompañar/explorar/desactivar y menos movimiento. Explorar es movimiento geométrico decorativo, no reconocimiento de Capas ni controles. No hace clic ni modifica el diseño. Mascota original conservada como launcher separado.
+
+Comentarios en tarjetas del panel flotante: minimizar, reabrir, resolver y contestar en hilo. Panel movible; opción de acercarlo al cursor al llegar. No hay anclaje automático a objetos, zoom o scroll. Contestar en Meta requiere permiso explícito para texto y contexto reciente, sin nueva imagen; Demo guarda respuestas locales sin IA. Hilos en registro local, tarjetas no restauradas al reiniciar. Controles azules, aportes Demo afirmativos y contexto reciente para reducir repetición en Meta.
+
+QA local aislado con provider simulado, sin llamadas Meta ni CI. Flujos de comentarios, permisos, concurrencia, detener y regresión de streams validados. No probado Windows nativo, DPI/múltiples monitores reales, bandeja updater ni Meta extremo a extremo. Instalador y updater externos no cambiados.
+
 ## v0.2.6
 
 Interfaz con identidad Tercero, flujo de sesion y detalles legibles. Captura: corregido el stop inmediato al iniciar/reanudar y la resolucion tardia de permisos. Estados visibles para esperar imagen, analizar, falta de permiso/clave y errores. Actualizar en bandeja abre el flujo GitHub PowerShell externo con handshake antes de cerrar. Su arranque desde bandeja y Meta completo aun no estan comprobados en Windows. No se hicieron nuevas pruebas CI.

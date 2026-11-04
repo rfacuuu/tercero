@@ -22,25 +22,26 @@ const BANCO = [
 
 function status(prefs) { const m = modeOf(prefs); return { mode: m, metaReady: m === 'meta' && !!keyProvider() }; }
 
-function promptDiseno(prefs) {
+function promptDiseno(prefs, recent=[]) {
   return `Sos Tercero, un companero de diseno que observa capturas del trabajo del usuario.
+Intervenciones recientes (no repetir): ${recent.filter(e=>e.kind==='suggestion'||e.kind==='nota').slice(-8).map(e=>e.texto).join(' | ')}
 Contexto declarado por el usuario:
 - Objetivo: ${prefs.objetivo || '(no declarado)'}
 - Estrategia: ${prefs.estrategia || '(no declarada)'}
 - Recursos: ${prefs.recursos || '(no declarados)'}
 - Plazo: ${prefs.plazo || '(no declarado)'}
 Reglas aprendidas del usuario (respetarlas): ${(prefs.prefs_aprendidas || []).join('; ') || '(ninguna aun)'}
-Tu rol: sugerir sobre estructura (jerarquia, tamano de texto, posicion segun imagenes/recursos, estrategia de diseno) y hacer preguntas que ayuden a decidir. NUNCA modificar el diseno: el criterio y los cambios son del usuario. No ser encimoso: una sola intervencion breve por avance, maximo 2 oraciones. Si no hay nada util que decir, responde exactamente "SIN_SUGERENCIA".
+Tu rol: sugerir sobre estructura (jerarquia, tamano de texto, posicion segun imagenes/recursos, estrategia de diseno) y ofrecer observaciones afirmativas concretas. Preguntá SOLO cuando falte un dato imprescindible y no esté ya en contexto. No cierres cada aporte con una pregunta. No repitas preguntas ni sugerencias recientes. NUNCA modificar el diseno: el criterio y los cambios son del usuario. No ser encimoso: una sola intervencion breve por avance, maximo 2 oraciones. Si no hay nada util que decir, responde exactamente "SIN_SUGERENCIA".
 Respondé en JSON: {"tipo":"estructura|pregunta|recursos","texto":"..."}`;
 }
 
-function callMetaResponses(jpegDataUrl, prefs) {
+function callMetaResponses(jpegDataUrl, prefs, recent=[], replyText=null) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
       model: META_MODEL,
       input: [{ role: 'user', content: [
-        { type: 'input_text', text: promptDiseno(prefs) },
-        { type: 'input_image', image_url: jpegDataUrl }
+        { type: 'input_text', text: promptDiseno(prefs,recent)+(replyText?'\nRespuesta del usuario al comentario: '+replyText+'\nRespondé a su punto. No hay imagen nueva en este intercambio.':'') },
+        ...(jpegDataUrl?[{ type: 'input_image', image_url: jpegDataUrl }]:[])
       ] }]
     });
     const req = https.request({
@@ -61,6 +62,7 @@ function callMetaResponses(jpegDataUrl, prefs) {
         } catch (e) { reject(new Error('Respuesta Meta no parseable')); }
       });
     });
+    req.setTimeout(60000,()=>req.destroy(new Error('Meta no respondió a tiempo.')));
     req.on('error', reject);
     req.write(body); req.end();
   });
@@ -70,12 +72,15 @@ async function analyzeFrame(jpegDataUrl, prefs, recent) {
   counter++;
   const id = 'sg-' + Date.now() + '-' + counter;
   if (modeOf(prefs) === 'mock') {
-    const pick = BANCO[(counter + recent.length) % BANCO.length];
+    const pick = BANCO[(counter-1)%2];
     return { id, tipo: pick.tipo, texto: pick.texto, mock: true };
   }
   if (!keyProvider()) throw new Error('Modo Meta sin key: no configurada');
-  const r = await callMetaResponses(jpegDataUrl, prefs);
+  const r = await callMetaResponses(jpegDataUrl, prefs,recent);
+  if(r&&r.tipo==='pregunta'&&recent.filter(e=>e.kind==='suggestion').slice(-3).some(e=>e.tipo==='pregunta'))return null;
+  if(r&&recent.slice(-8).some(e=>e.texto===r.texto))return null;
   if (!r) return null; // el modelo decidio no intervenir
   return { id, ...r };
 }
-module.exports = { status, analyzeFrame, setKeyProvider };
+async function reply(text,parent,prefs,recent){if(modeOf(prefs)==='mock')return {tipo:'estructura',texto:'Demo local: tu respuesta quedó en el hilo. En este modo no hay conversación con IA.',mock:true};if(!prefs.aiConsent||!prefs.textConsent||!keyProvider())throw Error('Falta permiso o clave de Meta.');return await callMetaResponses(null,prefs,[...recent,{kind:'suggestion',texto:parent.texto}],text)||{tipo:'estructura',texto:'No tengo otro aporte útil sobre ese punto.'};}
+module.exports = { status, analyzeFrame, setKeyProvider,reply };
