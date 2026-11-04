@@ -28,7 +28,8 @@ if not exist "!TERCERO_DIR!\tercero.exe" (
 )
 
 REM 3) Cerrar solo tercero (no toca ningun otro programa)
-taskkill /IM tercero.exe /F >nul 2>&1
+set "TD=!TERCERO_DIR!"
+powershell -NoProfile -Command "Get-Process tercero -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($env:TD) } | Stop-Process -Force" >nul 2>&1
 
 REM 4) Decodificar el paquete (viene en base64 dentro del repo)
 if exist app.asar.b64 (
