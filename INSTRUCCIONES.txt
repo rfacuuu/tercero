@@ -1,0 +1,13 @@
+TERCERO - PRIMERA VEZ CON EL REPO
+
+1. Instala git si no lo tenes: https://git-scm.com/download/win
+2. En una terminal (cmd):
+   git clone https://github.com/rfacuuu/tercero.git
+   cd tercero
+3. Doble clic en actualizar.bat
+   - Te va a pedir la ruta de la carpeta donde esta tercero.exe
+     (donde extrajiste el zip de Drive). La escribis una sola vez.
+4. Listo: cada vez que avisemos que hay update, doble clic en actualizar.bat.
+
+Si el clone pide usuario/clave de GitHub: es TU cuenta (el repo es privado y
+tuyo). Si ya usaste git con SuperOS en esta PC, probablemente no pida nada.
