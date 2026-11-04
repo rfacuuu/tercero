@@ -1,0 +1,27 @@
+const { contextBridge, ipcRenderer } = require('electron');
+contextBridge.exposeInMainWorld('tercero', {
+  version: () => ipcRenderer.invoke('app:version'),
+  pendingDraft: () => ipcRenderer.invoke('ui:draft'),
+  onTrayPaused: (cb) => ipcRenderer.on('hud:tray-paused', cb),
+  listSources: () => ipcRenderer.invoke('sources:list'),
+  startCapture: (id) => ipcRenderer.invoke('capture:start', id),
+  pause: () => ipcRenderer.invoke('capture:pause'),
+  resume: () => ipcRenderer.invoke('capture:resume'),
+  stop: () => ipcRenderer.invoke('capture:stop'),
+  snooze: (min) => ipcRenderer.invoke('hud:snooze', min),
+  getPrefs: () => ipcRenderer.invoke('prefs:get'),
+  setPrefs: (p) => ipcRenderer.invoke('prefs:set', p),
+  recent: () => ipcRenderer.invoke('session:recent'),
+  draftReport: () => ipcRenderer.invoke('report:draft'),
+  feedback: (id, useful) => ipcRenderer.invoke('hud:feedback', id, useful),
+  setClickThrough: (on) => ipcRenderer.invoke('hud:set-clickthrough', on),
+  dragTo: (x, y) => ipcRenderer.send('hud:drag-to', x, y),
+  addNote: (t) => ipcRenderer.invoke('session:note', t),
+  setHeight: (h) => ipcRenderer.invoke('hud:set-height', h),
+  quitApp: () => ipcRenderer.invoke('app:quit'),
+  aiStatus: () => ipcRenderer.invoke('ai:status'),
+  setAiKey: (k) => ipcRenderer.invoke('ai:set-key', k),
+  clearAiKey: () => ipcRenderer.invoke('ai:clear-key'),
+  onSuggestion: (cb) => ipcRenderer.on('hud:suggestion', (_e, s) => cb(s)),
+  onError: (cb) => ipcRenderer.on('hud:error', (_e, m) => cb(m))
+});

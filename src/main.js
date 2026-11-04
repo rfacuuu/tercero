@@ -1,0 +1,306 @@
+// Tercero - HUD companion (Electron main process)
+// Isla flotante siempre visible + captura elegida por el usuario + sugerencias.
+// Privacidad: captura solo de la fuente elegida, pausa inmediata, nada se sube
+// sin autorizacion explicita; los frames se descartan tras el analisis.
+const { app, BrowserWindow, ipcMain, desktopCapturer, session, screen, safeStorage, Tray, Menu, nativeImage, dialog } = require('electron');
+const path = require('path');
+const fs = require('fs');
+const { spawn } = require('child_process');
+const prefs = require('./prefs');
+const sessionLog = require('./session-log');
+const ai = require('./ai');
+
+let tray = null;
+let updateBusy = false;
+let hud = null;
+let captureWin = null; // ventana oculta que recibe el stream
+let captureTimer = null;
+let lastFrame = null;
+let paused = false;
+let snoozedUntil = 0;
+let currentSourceId = null;
+
+const SMOKE = process.argv.includes('--smoke');
+
+function showHud() {
+  if (!hud) createHud();
+  hud.show();
+  hud.setIgnoreMouseEvents(false);
+  hud.focus();
+}
+
+async function updateFromTray() {
+  if (updateBusy) return;
+  const root = path.dirname(path.dirname(process.execPath));
+  const exe = path.join(root, 'app', 'tercero.exe');
+  if (process.platform !== 'win32' || !app.isPackaged ||
+      path.resolve(process.execPath).toLowerCase() !== exe.toLowerCase() ||
+      !fs.existsSync(path.join(root, 'actualizaciones.json'))) {
+    await dialog.showMessageBox({ type: 'info', title: 'Actualizar Tercero', message: 'Esta copia no tiene configuradas las actualizaciones privadas.', detail: 'No se cambio nada. Configura una vez la carpeta sincronizada de Drive. La instalacion no cambia.' });
+    return;
+  }
+  const answer = await dialog.showMessageBox({type: 'question', title: 'Actualizar Tercero', buttons: ['Cancelar', 'Actualizar y reiniciar'], defaultId: 0, cancelId: 0,
+    message: 'Buscar y aplicar la release disponible en tu carpeta privada de Drive?',
+    detail: 'Se pausara la captura, se guardara un borrador local de los campos pendientes y se cerrara Tercero. Drive debe estar abierto y sincronizado. Veras la version y la verificacion; si Drive esta atrasado, podria no aparecer una release nueva. No se borran preferencias ni notas. La captura NO se reanuda sola.'});
+  if (answer.response !== 1) return;
+  updateBusy = true;
+  try {
+    const draft = hud && !hud.isDestroyed() ? await hud.webContents.executeJavaScript(`(() => {
+      const ids=['chat-input','f-objetivo','f-estrategia','f-recursos','f-plazo'];
+      return Object.fromEntries(ids.map(id=>[id,document.getElementById(id)?.value || '']));
+    })()`) : {};
+    fs.writeFileSync(path.join(app.getPath('userData'), 'pending-ui-draft.json'), JSON.stringify({savedAt: new Date().toISOString(), fields: draft}, null, 2));
+    const worker = path.join(root, 'tray-update-local.ps1');
+    fs.writeFileSync(worker, fs.readFileSync(path.join(__dirname, 'update-local.ps1')));
+    paused = true;
+    stopCapture();
+    sessionLog.add({ts: Date.now(), kind: 'update-request'});
+    const child = spawn('powershell.exe', ['-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-File',worker,'-Root',root,'-OldPid',String(process.pid),'-CurrentVersion',app.getVersion()], {detached:true, stdio:'ignore', windowsHide:false});
+    child.once('error', async e => {
+      updateBusy=false;
+      await dialog.showMessageBox({type:'error',title:'No se pudo abrir el actualizador',message:String(e.message),detail:'La captura quedo pausada. No se reemplazo la app; las notas siguen guardadas.'});
+    });
+    child.once('spawn', () => {child.unref(); app.quit();});
+  } catch(e) {
+    updateBusy=false;
+    await dialog.showMessageBox({type:'error',title:'No se pudo preparar la actualizacion',message:String(e.message),detail:'No se reemplazo la app.'});
+  }
+}
+
+function createTray() {
+  const icon = nativeImage.createFromPath(path.join(__dirname, 'renderer', 'assets', 'pluma-feliz.png')).resize({width:32,height:32});
+  tray = new Tray(icon);
+  tray.setToolTip('Tercero v' + app.getVersion());
+  tray.setContextMenu(Menu.buildFromTemplate([
+    {label:'Tercero v' + app.getVersion(), enabled:false},
+    {label:'Mostrar Tercero', click:showHud},
+    {label:'Pausar captura', click:()=>{paused=true;stopCapture();sessionLog.add({ts:Date.now(),kind:'pause'});if(hud)hud.webContents.send('hud:tray-paused');}},
+    {type:'separator'},
+    {label:'Actualizar a la ultima version', click:updateFromTray},
+    {type:'separator'},
+    {label:'Salir de Tercero', click:()=>app.quit()}
+  ]));
+  tray.on('double-click', showHud);
+}
+
+function createHud() {
+  const { width } = screen.getPrimaryDisplay().workAreaSize;
+  hud = new BrowserWindow({
+    width: 480, height: 320, x: width - 500, y: 16,
+    frame: false, transparent: true, alwaysOnTop: true, skipTaskbar: true,
+    resizable: false, hasShadow: false, focusable: true,
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
+  });
+  hud.setAlwaysOnTop(true, 'screen-saver');
+  hud.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
+  hud.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  // Por defecto el overlay NO intercepta clics: el renderer activa
+  // interactividad solo cuando el puntero esta sobre la isla visible.
+  hud.webContents.once('did-finish-load', () => { if (hud) hud.setIgnoreMouseEvents(true, { forward: true }); });
+  hud.on('closed', () => { hud = null; });
+  if (SMOKE) hud.webContents.once('did-finish-load', () => setTimeout(async () => {
+    // Verificacion visual: abrir panel, simular sugerencia + nota de chat y capturar.
+    await hud.webContents.executeJavaScript(`
+      document.getElementById('panel').classList.add('open');
+      document.getElementById('v-onboarding').style.display = 'none';
+      document.getElementById('controles').style.display = 'flex';
+      // estado real del smoke: sin captura, modo demo - el copy refleja eso
+      window.dispatchEvent(new Event('resize'));
+      const sug = { id: 'smoke-1', tipo: 'estructura', texto: 'El titular podría ganar jerarquía: si el objetivo es lectura rápida, probá subir 1-2 pasos el tamaño.', mock: true };
+      const ev = null;
+      const list = document.getElementById('v-sugerencias');
+      const c = document.createElement('div');
+      c.className = 'card';
+      c.innerHTML = '<div class="tipo">Sugerencia · demo</div><div class="txt">' + sug.texto + '</div><div class="row"><button class="primary">Me sirvió</button><button>No</button><button>Ahora no</button></div>';
+      list.prepend(c);
+      const n = document.createElement('div');
+      n.className = 'nota'; n.textContent = 'probá también con la fecha más chica';
+      list.prepend(n);
+      document.getElementById('pluma-pill').src = 'assets/pluma-feliz.png';
+      document.getElementById('pluma-panel').src = 'assets/pluma-emocionada.png';
+      document.getElementById('isla').dispatchEvent(new Event('mousemove'));
+    `);
+    await new Promise(r => setTimeout(r, 900));
+    const img = await hud.webContents.capturePage();
+    fs.writeFileSync('/tmp/tercero-smoke.png', img.toPNG());
+    app.quit();
+  }, 2500));
+}
+
+function createCaptureWindow() {
+  captureWin = new BrowserWindow({
+    show: false, width: 1280, height: 800,
+    webPreferences: { preload: path.join(__dirname, 'preload-capture.js'), contextIsolation: true }
+  });
+  captureWin.loadFile(path.join(__dirname, 'renderer', 'capture.html'));
+}
+
+// El usuario elige la fuente; solo se concede esa.
+function setupDisplayMediaHandler() {
+  session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+    desktopCapturer.getSources({ types: ['screen', 'window'] }).then(sources => {
+      const src = sources.find(s => s.id === currentSourceId);
+      if (src) callback({ video: src }); else callback({});
+    }).catch(() => callback({}));
+  });
+}
+
+function stopCapture() {
+  if (captureTimer) { clearInterval(captureTimer); captureTimer = null; }
+  if (captureWin) captureWin.webContents.send('capture:stop-stream');
+}
+
+function scheduleCapture() {
+  stopCapture();
+  const p = prefs.get();
+  if (!currentSourceId || paused) return;
+  const intervalMs = Math.max(5, p.captureIntervalSec || 20) * 1000;
+  captureTimer = setInterval(tickCapture, intervalMs);
+}
+
+async function tickCapture() {
+  if (paused || Date.now() < snoozedUntil || !captureWin) return;
+  try {
+    const jpeg = await captureWin.webContents.executeJavaScript('window.terceroCapture && window.terceroCapture.grabFrame()');
+    if (!jpeg) return;
+    if (!lastFrame) { lastFrame = jpeg; if (TEST) fs.appendFileSync('/tmp/tick-errors.log', new Date().toISOString() + ' baseline\n'); return; } // primer frame = referencia, sin IA
+    const changed = sessionLog.frameChanged(lastFrame, jpeg);
+    lastFrame = jpeg;
+    if (TEST) fs.appendFileSync('/tmp/tick-errors.log', new Date().toISOString() + ' tick changed=' + changed + '\n');
+    if (!changed) return; // sin avance visible, no molestar
+    const p = prefs.get();
+    if (TEST) fs.appendFileSync('/tmp/tick-errors.log', new Date().toISOString() + ' gate mode=' + ai.status(p).mode + ' consent=' + JSON.stringify(p.aiConsent) + ' keys=' + Object.keys(p).join(',') + '\n');
+    if (ai.status(p).mode === 'meta' && !p.aiConsent) return; // sin consentimiento, nada sale de la PC
+    const entry = await ai.analyzeFrame(jpeg, p, sessionLog.recent());
+    if (TEST) fs.appendFileSync('/tmp/tick-errors.log', new Date().toISOString() + ' ai-result=' + JSON.stringify(entry) + '\n');
+    if (entry) { // null = el criterio (mock o Meta) decidio no intervenir: no molestar
+      sessionLog.add({ ts: Date.now(), kind: 'suggestion', ...entry, frameKept: prefs.get().frameRetention === 'guardar-local' });
+      hud.webContents.send('hud:suggestion', entry);
+    }
+  } catch (e) {
+    hud.webContents.send('hud:error', String(e && e.message || e));
+    if (TEST) fs.appendFileSync('/tmp/tick-errors.log', new Date().toISOString() + ' ' + String(e && e.stack || e) + '\n');
+  }
+}
+
+const TEST = process.argv.includes('--test-capture');
+let testWin = null;
+function createTestWindow() {
+  testWin = new BrowserWindow({ width: 900, height: 600, show: true, title: 'Tercero Pieza Test' });
+  testWin.loadFile(path.join(__dirname, 'renderer', 'pieza.html'));
+}
+async function runCaptureTest() {
+  // E2E INTEGRADO: mismo camino que el usuario real (prefs -> fuente elegida -> tickCapture -> IA -> UI).
+  const out = { pasos: [], modoIA: process.env.TERCERO_AI || 'mock' };
+  try {
+    prefs.set({ onboarded: true, objetivo: 'Flyer para charla de diseno con speaker, 18hs',
+      estrategia: 'Que se entienda en 3 segundos', recursos: 'Titular, bloque para foto, horario', plazo: 'Hoy',
+      captureIntervalSec: 8, aiConsent: true }); // test: consentimiento simulado (capturas sinteticas autorizadas)
+    const sources = await desktopCapturer.getSources({ types: ['window', 'screen'], thumbnailSize: { width: 64, height: 64 } });
+    const src = sources.find(x => x.name.startsWith('Tercero Pieza Test'));
+    out.pasos.push('fuente elegida: ' + (src ? src.name : 'NO ENCONTRADA'));
+    if (!src) throw new Error('fuente pieza no listada');
+    currentSourceId = src.id; paused = false;
+    captureWin.webContents.send('capture:start-stream', src.id);
+    sessionLog.add({ ts: Date.now(), kind: 'session-start', sourceId: src.id });
+    scheduleCapture(); // el bucle real: tickCapture -> diff -> ai.analyzeFrame -> hud:suggestion
+    // esperar activamente el resultado IA (hasta 55s), no un tiempo fijo: las respuestas pueden tardar >15s
+    const t0 = Date.now();
+    while (Date.now() - t0 < 55000) {
+      await new Promise(r => setTimeout(r, 1000));
+      try { if (fs.readFileSync('/tmp/tick-errors.log','utf8').includes('ai-result=')) break; } catch {}
+    }
+    const log = sessionLog.recent(20).filter(e => e.kind === 'suggestion');
+    out.pasos.push('sugerencias generadas por el bucle: ' + log.length);
+    out.sugerencias = log.map(e => ({ tipo: e.tipo, texto: e.texto, mock: !!e.mock }));
+    const img = await hud.webContents.capturePage();
+    fs.writeFileSync('/tmp/tercero-e2e-hud.png', img.toPNG());
+    out.ok = log.length > 0;
+  } catch (e) { out.ok = false; out.error = String(e && e.message || e); }
+  fs.writeFileSync('/tmp/tercero-e2e.json', JSON.stringify(out, null, 2));
+  app.quit();
+}
+// Key Meta: cifrada con el almacen seguro del SO (DPAPI en Windows, keychain en mac/linux).
+// Nunca se guarda en claro, nunca llega al renderer, nunca se loguea.
+let metaKey = '';
+function keyFile() { return require('path').join(app.getPath('userData'), 'meta-key.enc'); }
+function loadKey() {
+  try { metaKey = safeStorage.decryptString(require('fs').readFileSync(keyFile())); } catch { metaKey = ''; }
+}
+ai.setKeyProvider(() => metaKey || process.env.META_API_KEY || '');
+
+app.whenReady().then(() => {
+  loadKey();
+  prefs.init(app.getPath('userData'));
+  sessionLog.init(app.getPath('userData'));
+  setupDisplayMediaHandler();
+  createHud();
+  createCaptureWindow();
+  if (!SMOKE && !TEST) createTray();
+  if (TEST) { createTestWindow(); setTimeout(runCaptureTest, 7000); }
+});
+
+app.on('before-quit', () => { stopCapture(); if (tray) {tray.destroy();tray=null;} });
+
+app.on('window-all-closed', () => { stopCapture(); app.quit(); });
+
+ipcMain.handle('sources:list', async () => {
+  const sources = await desktopCapturer.getSources({ types: ['window', 'screen'], thumbnailSize: { width: 320, height: 180 }, fetchWindowIcons: true });
+  return sources.map(s => ({ id: s.id, name: s.name, appIcon: s.appIcon ? s.appIcon.toDataURL() : null, thumb: s.thumbnail.toDataURL() }));
+});
+
+ipcMain.handle('capture:start', async (_e, sourceId) => {
+  currentSourceId = sourceId; paused = false;
+  captureWin.webContents.send('capture:start-stream', sourceId);
+  sessionLog.add({ ts: Date.now(), kind: 'session-start', sourceId });
+  scheduleCapture();
+  return { ok: true };
+});
+
+ipcMain.handle('capture:pause', () => { paused = true; stopCapture(); sessionLog.add({ ts: Date.now(), kind: 'pause' }); return { ok: true }; });
+ipcMain.handle('capture:resume', () => { paused = false; if (captureWin) captureWin.webContents.send('capture:start-stream', currentSourceId); scheduleCapture(); sessionLog.add({ ts: Date.now(), kind: 'resume' }); return { ok: true }; });
+ipcMain.handle('capture:stop', () => { currentSourceId = null; stopCapture(); sessionLog.add({ ts: Date.now(), kind: 'session-stop' }); return { ok: true }; });
+
+ipcMain.handle('hud:snooze', (_e, minutes) => { snoozedUntil = Date.now() + Math.max(1, minutes || 10) * 60000; return { snoozedUntil }; });
+ipcMain.handle('prefs:get', () => prefs.get());
+ipcMain.handle('prefs:set', (_e, patch) => { const p = prefs.set(patch); scheduleCapture(); return p; });
+ipcMain.handle('session:recent', () => sessionLog.recent(50));
+ipcMain.handle('report:draft', () => sessionLog.buildPortfolioDraft(prefs.get()));
+ipcMain.handle('hud:feedback', (_e, id, useful) => { sessionLog.addFeedback(id, useful); return { ok: true }; });
+ipcMain.handle('hud:set-clickthrough', (_e, on) => { if (hud) hud.setIgnoreMouseEvents(!!on, { forward: true }); return { ok: true }; });
+// Arrastre manual: -webkit-app-region no funciona de forma confiable en Windows
+// cuando la ventana alterna setIgnoreMouseEvents (click-through). El renderer
+// manda la posicion destino y el proceso principal mueve la ventana.
+ipcMain.on('hud:drag-to', (_e, x, y) => {
+  if (!hud) return;
+  const nx = Math.round(Number(x)), ny = Math.round(Number(y));
+  if (Number.isFinite(nx) && Number.isFinite(ny)) hud.setPosition(nx, ny);
+});
+// Notas del chat de contexto: quedan en el registro local y entran al borrador.
+ipcMain.handle('session:note', (_e, texto) => {
+  const t = String(texto || '').trim().slice(0, 500);
+  if (!t) return { ok: false };
+  sessionLog.add({ ts: Date.now(), kind: 'nota', texto: t });
+  return { ok: true };
+});
+// La ventana se achica/crece con el contenido visible: nada de area invisible que robe clics.
+ipcMain.handle('hud:set-height', (_e, h) => {
+  if (!hud) return { ok: false };
+  const b = hud.getBounds();
+  const nh = Math.max(44, Math.min(700, Math.round(Number(h) || 44)));
+  if (nh !== b.height) hud.setBounds({ x: b.x, y: b.y, width: 480, height: nh });
+  return { ok: true };
+});
+// Cierre visible y recuperable: la X de la isla cierra la app; se reabre con tercero.exe.
+ipcMain.handle('app:quit', () => { app.quit(); return { ok: true }; });
+ipcMain.handle('ai:status', () => ({ ...ai.status(prefs.get()), keyStored: !!metaKey }));
+ipcMain.handle('ai:set-key', (_e, key) => {
+  if (!safeStorage.isEncryptionAvailable()) return { ok: false, error: 'safeStorage no disponible en este sistema' };
+  require('fs').writeFileSync(keyFile(), safeStorage.encryptString(String(key || '')));
+  metaKey = String(key || '');
+  return { ok: true };
+});
+ipcMain.handle('ai:clear-key', () => { metaKey = ''; try { require('fs').unlinkSync(keyFile()); } catch {} return { ok: true }; });
+
+ipcMain.handle('app:version', () => app.getVersion());
+ipcMain.handle('ui:draft', () => {try{const f=path.join(app.getPath('userData'),'pending-ui-draft.json');const d=JSON.parse(fs.readFileSync(f,'utf8'));fs.unlinkSync(f);return d;}catch{return null;}});

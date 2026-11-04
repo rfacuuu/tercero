@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: 'Inter'; src: url('assets/fonts/inter-400.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+  @font-face { font-family: 'Inter'; src: url('assets/fonts/inter-600.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+  @font-face { font-family: 'Inter'; src: url('assets/fonts/inter-700.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+  * { box-sizing: border-box; margin: 0; font-family: 'Inter', system-ui, sans-serif; }
+  html, body { background: transparent; overflow: hidden; }
+  #isla {
+    background: rgba(18,18,24,.92); color: #f2f2f7; border-radius: 22px;
+    padding: 10px 14px; backdrop-filter: blur(8px);
+    box-shadow: 0 6px 24px rgba(0,0,0,.45); width: 100%; min-height: 44px;
+  }
+  #pill { display: flex; align-items: center; gap: 9px; cursor: grab; user-select: none; }
+  #pill.dragging { cursor: grabbing; }
+  #pluma-pill { width: 30px; height: 30px; object-fit: contain; pointer-events: none; filter: drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
+  #b-cerrar-app { cursor: pointer; font-size: 14px; line-height: 1; padding: 2px 5px; border-radius: 6px; opacity: .7; }
+  #b-cerrar-app:hover { background: #453030; opacity: 1; }
+  #dot { width: 9px; height: 9px; border-radius: 50%; background: #555; }
+  #dot.on { background: #4cd964; } #dot.paused { background: #ffcc00; }
+  #pill .t { font-size: 13px; font-weight: 700; letter-spacing: .01em; }
+  #pill .s { font-size: 11px; opacity: .65; flex: 1; }
+  #panel { display: none; margin-top: 10px; font-size: 12.5px; }
+  #panel.open { display: block; }
+  #cabecera { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  #pluma-panel { width: 64px; height: 64px; object-fit: contain; filter: drop-shadow(0 3px 5px rgba(0,0,0,.5)); }
+  #cabecera .hola { font-size: 12px; opacity: .75; line-height: 1.35; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; align-items: center; }
+  button { background: #2c2c36; color: #eee; border: 0; border-radius: 10px; padding: 6px 10px; font-size: 12px; cursor: pointer; font-family: inherit; }
+  button:hover { background: #3a3a48; }
+  button.primary { background: #0a84ff; }
+  input, select, textarea { background: #1c1c24; color: #eee; border: 1px solid #333; border-radius: 8px; padding: 5px 8px; font-size: 12px; width: 100%; font-family: inherit; }
+  label { font-size: 11px; opacity: .7; display: block; margin: 6px 0 2px; }
+  /* Tarjeta de sugerencia (estilo B) */
+  .card { background: #23232e; border-radius: 14px; padding: 10px 12px; margin-top: 8px; }
+  .card .tipo { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; opacity: .55; }
+  .card .txt { margin: 5px 0 8px; line-height: 1.4; }
+  .card .row { margin: 0; }
+  .nota { background: #0a84ff; border-radius: 14px 14px 4px 14px; padding: 7px 11px; margin-top: 8px; margin-left: 48px; font-size: 12.5px; line-height: 1.35; }
+  .src { display: flex; align-items: center; gap: 8px; background: #23232e; border-radius: 10px; padding: 6px; margin-top: 6px; cursor: pointer; }
+  .src img { width: 64px; border-radius: 6px; }
+  .src:hover { background: #2c2c3a; }
+  .muted { opacity: .55; font-size: 11px; }
+  .mock { color: #ff9f0a; font-size: 10px; }
+  #chat-row { display: flex; gap: 6px; margin-top: 10px; }
+  #chat-input { flex: 1; border-radius: 12px; }
+  #b-chat { border-radius: 12px; padding: 6px 12px; }
+  pre#reporte { white-space: pre-wrap; background: #14141a; border-radius: 10px; padding: 8px; max-height: 220px; overflow: auto; font-size: 11px; }
+
+/* Composicion B: burbuja separada y personaje como ancla inferior. */
+#isla {background:transparent;box-shadow:none;backdrop-filter:none;padding:12px;width:480px;display:flex;flex-direction:column;align-items:flex-end;gap:16px;}
+#panel {position:relative;background:rgba(25,26,34,.98);border:1px solid #393b48;box-shadow:0 8px 28px #0006;border-radius:22px;padding:18px;margin:0;width:420px;overflow:visible;flex-shrink:0;scrollbar-width:thin;scrollbar-color:#4b4e5c transparent;}
+#panel::after {content:'';position:absolute;bottom:-9px;right:45px;width:18px;height:18px;transform:rotate(45deg);background:#191a22;border-right:1px solid #393b48;border-bottom:1px solid #393b48;}
+#pill {flex-shrink:0;background:rgba(22,23,30,.96);border:1px solid #363845;border-radius:26px;padding:6px 12px 6px 3px;gap:8px;width:fit-content;max-width:450px;min-height:72px;}
+#pluma-pill {width:56px;height:64px;object-fit:contain;}
+#pill .t {font-size:13px;} #pill .s {max-width:150px;font-size:10px;}
+#cabecera {margin:0 0 12px;border-bottom:1px solid #353743;padding-bottom:10px;}
+#cabecera .hola {font-size:11px;line-height:1.5;}
+.card {background:transparent;padding:0;border-radius:0;margin-top:4px;}
+.card .txt, #bienvenida .txt {font-size:16px;line-height:1.5;margin:9px 0 16px;font-weight:400;}
+.card .tipo,.tipo {font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#a7abb9;}
+.card .row button {min-width:82px;padding:9px 11px;}
+button {padding:8px 11px;}button.primary{background:#008cff;}
+#chat-row {border-top:1px solid #353743;padding-top:14px;margin-top:16px;}
+#chat-input {padding:10px 12px;border-radius:14px;}
+#herramientas summary {cursor:pointer;font-size:10px;color:#adb2c4;padding:6px 8px;}
+#herramientas .row {max-width:350px;}
+#controles {gap:6px;margin:12px 0 0;}#controles button {font-size:10px;padding:6px 8px;}
+#v-onboarding,#v-prefs,#v-fuentes,#v-reporte {max-height:350px;overflow-y:auto;}
+#v-onboarding {background:#22242e;border-radius:14px;padding:14px;}
+#v-onboarding input {padding:8px 10px;margin-bottom:3px;}
+.nota {margin:10px 0 10px 30px;font-size:13px;}
+#v-sugerencias:has(.card) + #bienvenida {display:none;}
+
+</style>
+</head>
+<body>
+<div id="isla">
+  <div id="panel">
+    <div id="cabecera">
+      <img id="pluma-panel" src="assets/pluma-dormida.png" alt="" hidden>
+      <div class="hola" id="hola">Todavía no estoy mirando nada. Elegí qué ventana acompaño.</div>
+    </div>
+    <div id="v-onboarding" style="display:none">
+      <b>Contexto de la pieza</b><div class="muted">Opcional. Podés completarlo ahora o seguir sin estos datos.</div>
+      <label>Objetivo del diseño</label><input id="f-objetivo" placeholder="Ej: flyer para charla de X">
+      <label>Estrategia</label><input id="f-estrategia" placeholder="Ej: que se entienda en 3 segundos">
+      <label>Recursos con los que contás</label><input id="f-recursos" placeholder="Ej: logo, fotos del speaker">
+      <label>Plazo</label><input id="f-plazo" placeholder="Ej: hoy 18hs">
+      <div class="row"><button class="primary" id="b-onboard">Guardar contexto</button><button id="b-cerrar-setup">Volver</button></div>
+    </div>
+    <div id="v-fuentes" style="display:none">
+      <b>¿Qué ventana puedo mirar?</b> <span class="muted">Solo capturo la que elijas. Pausás cuando quieras.</span>
+      <div id="lista-fuentes"></div>
+    </div>
+    <div id="v-sugerencias"></div>
+    <div id="bienvenida"><div class="tipo">A tu ritmo</div><div class="txt">Elegí una ventana para acompañar tu diseño. Vos decidís qué cambiar.</div></div>
+    <div id="chat-row">
+      <input id="chat-input" placeholder="Escribir contexto..." maxlength="500">
+      <button class="primary" id="b-chat" title="Enviar">➤</button>
+    </div>
+    <div class="row" id="controles" style="display:none">
+      <button class="primary" id="b-elegir">Elegir ventana</button>
+      <button id="b-contexto">Contexto</button>
+      <details id="herramientas"><summary>Opciones</summary><div class="row">
+      <button id="b-pausa">Pausar</button>
+      <button id="b-posponer">Posponer 10 min</button>
+      <button id="b-fuente">Cambiar ventana</button>
+      <button id="b-reporte">Borrador portfolio</button>
+      <button id="b-prefs">Preferencias</button>
+      <button id="b-stop">Terminar</button></div></details>
+    </div>
+    <div id="v-prefs" style="display:none">
+      <b>Preferencias</b> <span class="muted">visibles y editables</span>
+      <label>Intervalo de captura (seg)</label><input id="p-interval" type="number" min="5">
+      <label>Cuánto intervengo</label>
+      <select id="p-frecuencia"><option value="baja">Poco</option><option value="media">Normal</option><option value="alta">Seguido</option></select>
+      <label>Frames de captura</label>
+      <select id="p-retencion"><option value="descartar">Descartar tras analizar</option><option value="guardar-local">Guardar local</option></select>
+      <label>Modo IA</label>
+      <select id="p-modo"><option value="mock">Demo local (sin red, sin costo)</option><option value="meta">Meta (requiere clave + consentimiento)</option></select>
+      <div class="card" style="border:1px solid #664d03">
+        <div class="tipo" style="color:#ff9f0a">Antes de usar la IA</div>
+        <div class="txt">Mientras uses créditos gratuitos, Meta puede usar el contenido enviado para mejorar el producto
+        (texto literal: "While using free credits your content may be used for product improvement").
+        Tercero solo envía la ventana que vos elegís, solo cuando la captura está activa, y nada se graba ni se publica sin tu OK.</div>
+        <div class="row"><button class="primary" id="b-consent">Acepto enviar mis capturas a Meta</button>
+        <span id="consent-estado" class="muted"></span></div>
+      </div>
+      <label>Clave Meta Model API <span class="muted">se guarda cifrada por el sistema, nunca en texto plano</span></label>
+      <input id="p-key" type="password" placeholder="Pegar key (queda solo en esta PC)">
+      <div class="row"><button id="b-guardar-key">Guardar clave</button><button id="b-borrar-key">Borrar clave</button><span id="key-estado" class="muted"></span></div>
+      <label>Reglas aprendidas de tu feedback</label>
+      <textarea id="p-aprendidas" rows="3"></textarea>
+      <div class="row"><button class="primary" id="b-guardar-prefs">Guardar</button></div>
+    </div>
+    <div id="v-reporte" style="display:none">
+      <b>Borrador del caso</b> <span class="muted">revisalo antes de compartirlo</span>
+      <pre id="reporte"></pre>
+      <div class="row"><button id="b-copiar">Copiar</button><button id="b-cerrar-reporte">Cerrar</button></div>
+    </div>
+    <div id="v-error" class="muted"></div>
+  </div>
+  <div id="pill">
+    <img id="pluma-pill" src="assets/pluma-dormida.png" alt="">
+    <div id="dot"></div>
+    <span class="t">tercero</span><span id="version" class="muted" style="font-size:9px"></span>
+    <span class="s" id="estado">sin captura</span>
+    <span id="aiMode" class="mock"></span>
+    <span id="b-cerrar-app" title="Cerrar Tercero (salir)">✕</span>
+  </div>
+
+</div>
+<script src="renderer.js"></script>
+</body>
+</html>

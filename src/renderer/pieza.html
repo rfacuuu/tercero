@@ -1,0 +1,13 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{margin:0;font-family:system-ui;background:#0f2027;color:#fff;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
+h1{font-size:64px;margin:0}#bloque{width:300px;height:180px;border-radius:16px}
+</style></head><body>
+<h1 id="tit">CHARLA DE DISEÑO</h1>
+<div id="bloque" style="background:#e63946"></div>
+<p id="sub">Speaker invitado - 18hs</p>
+<script>
+let i=0;const cols=['#e63946','#457b9d','#2a9d8f','#f4a261'];
+setInterval(()=>{i++;document.getElementById('bloque').style.background=cols[i%4];
+document.getElementById('tit').style.fontSize=(64+((i%3)*12))+'px';
+document.title='Tercero Pieza Test v'+i;},3000);
+</script></body></html>

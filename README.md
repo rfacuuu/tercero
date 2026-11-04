@@ -1,32 +1,40 @@
-# tercero (repo privado de actualizaciones)
+# Tercero 0.2.1
 
-Companero de diseno en vivo: isla flotante de Electron que mira la ventana
-que VOS elegis, sugiere y pregunta mientras diseas, y redacta el borrador
-del caso para tu portfolio.
+Repositorio privado de codigo y builds. No se publico para el hackathon.
 
-## Como actualizar (Windows)
+## Esta version
 
-1. Primera vez: `git clone https://github.com/rfacuuu/tercero.git` y entra a la carpeta.
-2. Doble clic en `actualizar.bat`.
-   - La primera vez te pide la ruta donde esta `tercero.exe` (la guarda en
-     `instalacion.txt` para la proxima).
-   - Baja la ultima version, hace respaldo, verifica la copia y reabre la app.
-3. Si algo falla despues de actualizar: doble clic en `restaurar.bat`.
+Burbuja compacta separada de Pluma, input de contexto, configuracion separada,
+menu de bandeja y actualizador con verificaciones. Voz y chat con respuestas IA
+no estan implementados. La captura solo se inicia por eleccion del usuario.
 
-El update pesa ~40 KB (solo `app.asar`), no los 151 MB del paquete completo.
+## Actualizar sin reinstalar
 
-## Que NO toca una actualizacion
+El canal de esta build es una carpeta privada de Google Drive para escritorio.
+El usuario instala Drive e inicia sesion en su cuenta personal, sin agregar
+carpetas del PC a backup. El paquete Tercero-preparar-0.2.1.zip configura una vez
+la MISMA instalacion existente, elige la carpeta sincronizada y aplica el ASAR.
+El ZIP reutiliza el runtime Windows ya instalado, no es instalador de cero.
 
-- Tus preferencias, reglas aprendidas y clave Meta: viven cifradas en tu
-  usuario de Windows (%APPDATA%), fuera del alcance del update.
-- Ningun otro programa: el .bat solo cierra `tercero.exe` antes de reemplazar.
+Las siguientes releases requieren actualizar solo tercero-ultima.json dentro de
+esa carpeta privada: contiene ASAR base64, version y SHA256. El boton del tray
+lee la copia sincronizada, guarda el borrador pendiente, pausa captura, verifica
+version interna, rechaza downgrade, respalda, copia, verifica y pide reapertura.
+No garantiza frescura de una copia local si Drive aun no sincronizo.
 
-## Privacidad
+GitHub conserva fuentes y artefactos; publicar aqui NO sincroniza Drive por si
+solo. El responsable de publicar un build debe actualizar tambien el manifest
+estable de Drive y verificar su lectura antes de anunciar disponibilidad.
 
-- Captura solo la fuente que elegis, solo cuando esta activa. Pausa inmediata.
-- Sin consentimiento explicito en Preferencias, ninguna captura sale de tu PC.
-- Con creditos gratuitos, Meta puede usar el contenido enviado para mejorar el
-  producto (aviso literal dentro de la app).
-- Nada se graba ni se publica por defecto.
+## Verificado y pendiente
 
-`tercero-src.zip.b64` tiene el codigo fuente (base64; decodificar con `certutil -decode tercero-src.zip.b64 tercero-src.zip`) completo de esta version.
+Render de UI y pruebas de scripts con archivos reales/procesos simulados:
+aplicacion, hash corrupto, version inconsistente, origen ausente y backup.
+Falta confirmar instalacion y actualizacion reales en Windows y sincronizacion
+Drive. No afirmar esas pruebas a partir de los tests locales.
+
+## Datos
+
+Preferencias y notas viven en el perfil Windows, fuera del paquete. No contiene
+claves, capturas, notas personales ni credenciales. Repo y carpeta Drive privados.
+Los hashes detectan corrupcion; la confianza del feed depende del acceso privado.

@@ -1,13 +1,10 @@
-TERCERO - PRIMERA VEZ CON EL REPO
+TERCERO 0.2.1
 
-1. Instala git si no lo tenes: https://git-scm.com/download/win
-2. En una terminal (cmd):
-   git clone https://github.com/rfacuuu/tercero.git
-   cd tercero
-3. Doble clic en actualizar.bat
-   - Te va a pedir la ruta de la carpeta donde esta tercero.exe
-     (donde extrajiste el zip de Drive). La escribis una sola vez.
-4. Listo: cada vez que avisemos que hay update, doble clic en actualizar.bat.
-
-Si el clone pide usuario/clave de GitHub: es TU cuenta (el repo es privado y
-tuyo). Si ya usaste git con SuperOS en esta PC, probablemente no pida nada.
+Actualizaciones privadas desde Google Drive para escritorio.
+Instalacion existente: C:\Users\Facu\tercero-nuevo-20261104-152331
+Configurar una vez con PREPARAR.cmd del ZIP Tercero-preparar-0.2.1.zip.
+El ZIP reutiliza el runtime que ya esta instalado, no es instalador de cero.
+Despues usar Actualizar a la ultima version en la bandeja.
+Drive debe estar abierto y sincronizado. La app no puede garantizar que un archivo local atrasado sea la ultima version de la nube.
+No se borran preferencias ni notas; captura no se reanuda sola.
+No usar archivos viejos de fragmentos de Drive.
