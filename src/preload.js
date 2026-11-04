@@ -26,5 +26,6 @@ contextBridge.exposeInMainWorld('tercero', {
   setAiKey: (k) => ipcRenderer.invoke('ai:set-key', k),
   clearAiKey: () => ipcRenderer.invoke('ai:clear-key'),
   onSuggestion: (cb) => ipcRenderer.on('hud:suggestion', (_e, s) => cb(s)),
+  onPipeline: cb=>ipcRenderer.on('hud:pipeline',(_e,s)=>cb(s)),
   onError: (cb) => ipcRenderer.on('hud:error', (_e, m) => cb(m))
 });

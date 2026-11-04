@@ -1,6 +1,6 @@
 const $ = id => document.getElementById(id);
 const show = (id, on) => $(id).style.display = on ? 'block' : 'none';
-let prefs = null, capturando = false, pendingQuestion = null;
+let prefs = null, capturando = false, pendingQuestion = null, selectedSource = null, currentView = 'home', sourceLoading = false;
 
 // --- Pluma: expresiones segun estado ---
 const EXPR = { feliz: 'assets/pluma-feliz.png', pensativa: 'assets/pluma-pensativa.png',
@@ -14,22 +14,23 @@ function setExpr(nombre, volverMs) {
 }
 
 function setEstado(txt, modo) {
-  $('estado').textContent = txt;
+  $('estado').textContent = txt;if($('header-status'))$('header-status').textContent=txt;const status=$('session-status');if(status){status.textContent=txt;status.classList.toggle('paused',modo==='paused');}
   $('dot').className = modo === 'on' ? 'on' : modo === 'paused' ? 'paused' : '';
 }
 
 async function init() {
+  for(const selector of ['.settings-footer','.context-footer']){const footer=document.querySelector(selector);$('panel').insertBefore(footer,$('notes-label'));}
   $('version').textContent = 'v' + await window.tercero.version();
   const draft = await window.tercero.pendingDraft();
   if (draft && draft.fields) for (const [id, value] of Object.entries(draft.fields)) { if ($(id)) $(id).value = value; }
   prefs = await window.tercero.getPrefs();
   const ai = await window.tercero.aiStatus();
-  $('aiMode').textContent = ai.mode === 'mock' ? 'demo sin IA' : 'Meta';
+  $('aiMode').textContent = ai.mode === 'mock' ? 'Demo local' : 'Meta';$('header-mode').textContent=ai.mode==='mock'?'Demo local':'Meta AI';
   setExpr('feliz');
   applyUi();
   $('panel').classList.toggle('open', !!prefs.panelPinned);
   layout();
-  show('v-onboarding', false); show('controles', true);
+  show('v-onboarding', false); show('controles', true);setEstado('Sin captura');goView('home');
 }
 
 $('b-onboard').onclick = async () => {
@@ -38,7 +39,7 @@ $('b-onboard').onclick = async () => {
     objetivo: $('f-objetivo').value, estrategia: $('f-estrategia').value,
     recursos: $('f-recursos').value, plazo: $('f-plazo').value
   });
-  show('v-onboarding', false); show('bienvenida', true); show('controles', true);
+  goView('home');
 };
 
 $('b-contexto').onclick = () => {$('panel').classList.add('context');layout();closeViews();show('v-onboarding',true);show('bienvenida',false);};
@@ -46,40 +47,43 @@ $('b-cerrar-setup').onclick = () => {$('panel').classList.remove('context');layo
 $('b-elegir').onclick = () => abrirFuentes();
 
 async function abrirFuentes() {
-  $('panel').classList.remove('config','options','context');$('panel').classList.add('source');layout();
+  if(sourceLoading)return;sourceLoading=true;goView('source');$('lista-fuentes').textContent='Buscando ventanas disponibles…';try{
+  $('panel').classList.remove('config','options','context','suggestion','active-session');$('panel').classList.add('source');layout();
   show('v-fuentes', true);show('bienvenida',false);
   const fuentes = await window.tercero.listSources();
   closeViews();show('v-fuentes',true);const lista = $('lista-fuentes'); lista.innerHTML = '';
   for (const f of fuentes) {
-    const d = document.createElement('div');
+    const d = document.createElement('button');d.type='button';
     d.className = 'src';
     const thumb=document.createElement("img");thumb.src=f.thumb;const title=document.createElement("span");title.textContent=f.name;d.append(thumb,title);
     d.onclick = async () => {
-      await window.tercero.startCapture(f.id);
+      const started=await window.tercero.startCapture(f.id);if(!started?.ok){$('v-error').textContent='No se pudo iniciar la captura.';return;}selectedSource=f;currentView='home';
       capturando = true; show('v-fuentes', false);$('panel').classList.remove('source');layout();
       setEstado('mirando: ' + f.name.slice(0, 28), 'on');
       $('b-pausa').textContent = 'Pausar';
       $('hola').textContent = HOLA_ON;
-      setExpr('feliz');
+      setExpr('feliz');goView('home');
     };
     lista.appendChild(d);
-  }
+  }if(!fuentes.length)lista.textContent='No hay ventanas disponibles. Abrí una ventana y volvé a intentar.';
+  }catch(error){$('lista-fuentes').textContent='No se pudieron listar las ventanas.';$('v-error').textContent=error.message;}finally{sourceLoading=false;}
 }
 
 const HOLA_IDLE = 'Todavía no estoy mirando nada. Elegí qué ventana acompaño.';
 const HOLA_ON = 'Estoy mirando la ventana que elegiste. Si veo algo útil, te cuento acá.';
 const HOLA_PAUSA = 'Captura en pausa: no estoy mirando nada hasta que reanudes.';
 $('b-pausa').onclick = async () => {
+  if(!selectedSource)return abrirFuentes();
   if (capturando) { await window.tercero.pause(); capturando = false; setEstado('pausada', 'paused'); $('b-pausa').textContent = 'Reanudar'; setExpr('dormida'); $('hola').textContent = HOLA_PAUSA; }
-  else { await window.tercero.resume(); capturando = true; setEstado('mirando', 'on'); $('b-pausa').textContent = 'Pausar'; setExpr('feliz'); $('hola').textContent = HOLA_ON; }
+  else { const resumed=await window.tercero.resume();if(!resumed?.ok){$('v-error').textContent=resumed?.error||'No se pudo reanudar';return;}capturando = true; setEstado('mirando', 'on'); $('b-pausa').textContent = 'Pausar'; setExpr('feliz'); $('hola').textContent = HOLA_ON; }refreshHome();
 };
-$('b-posponer').onclick = async () => { await window.tercero.snooze(10); setEstado('pospuesta 10 min', 'paused'); setExpr('dormida'); $('hola').textContent = HOLA_PAUSA; };
+$('b-posponer').onclick = async () => { if(!selectedSource)return;await window.tercero.snooze(10); setEstado('Ideas silenciadas 10 min', 'paused'); setExpr('dormida'); };
 $('b-fuente').onclick = abrirFuentes;
-$('b-stop').onclick = async () => { await window.tercero.stop(); capturando = false; setEstado('sin captura'); setExpr('dormida'); $('hola').textContent = HOLA_IDLE; };
+$('b-stop').onclick = async () => {pendingQuestion=null;$('v-sugerencias').replaceChildren(); await window.tercero.stop(); capturando = false;selectedSource=null;goView('home'); setEstado('Sin captura'); setExpr('dormida'); $('hola').textContent = HOLA_IDLE; };
 
 $('b-prefs').onclick = async () => {
   closeViews();show('bienvenida',false);show('v-sugerencias',false);$('panel').classList.remove('source','options','context');$('panel').classList.add('open','config');layout();
-  prefs = await window.tercero.getPrefs();
+  currentView='config';refreshHome();layout();prefs = await window.tercero.getPrefs();
   $('p-dock').value=prefs.dockMode||'floating';$('p-pin').checked=!!prefs.panelPinned;$('p-details').checked=!!prefs.showDetails;$('p-shadow').checked=!!prefs.smallShadow;
   $('p-interval').value = prefs.captureIntervalSec;
   $('p-frecuencia').value = prefs.frecuenciaIntervencion;
@@ -112,8 +116,8 @@ $('b-guardar-prefs').onclick = async () => {
     prefs_aprendidas: $('p-aprendidas').value.split('\n').filter(Boolean)
   });
   const ai = await window.tercero.aiStatus();
-  $('aiMode').textContent = ai.mode === 'mock' ? 'demo sin IA' : 'Meta';
-  show('v-prefs', false);show('v-sugerencias',true);show('bienvenida',!$('v-sugerencias').children.length);$('panel').classList.remove('config');applyUi();layout();
+  $('aiMode').textContent = ai.mode === 'mock' ? 'Demo local' : 'Meta';$('header-mode').textContent=ai.mode==='mock'?'Demo local':'Meta AI';
+  applyUi();goView('home');
 };
 
 $('b-reporte').onclick = async () => {
@@ -133,15 +137,15 @@ async function enviarNota() {
   $('chat-input').value = '';
   const n = document.createElement('div');
   n.className = 'nota'; n.textContent = pendingQuestion ? 'Tu respuesta: '+t : t;
-  pendingQuestion=null;$('chat-input').placeholder='Escribir contexto...';
-  $('v-sugerencias').prepend(n);
+  pendingQuestion=null;$('chat-input').placeholder='Anotar algo para esta sesión…';
+  $('v-sugerencias').prepend(n);goView('suggestion');
   setExpr('pensativa', 2500);
 }
 $('b-chat').onclick = enviarNota;
 $('chat-input').addEventListener('keydown', e => { if (e.key === 'Enter') enviarNota(); });
 
 window.tercero.onSuggestion(s => {
-  setExpr('emocionada', 4000);$('panel').classList.add('suggestion');
+  setExpr('emocionada', 4000);goView('suggestion');
   if(s.tipo==='pregunta'){pendingQuestion={id:s.id,texto:s.texto};$('chat-input').placeholder='Responder a esta pregunta...';}
   const c = document.createElement('div');
   c.className = 'card';
@@ -149,15 +153,16 @@ window.tercero.onSuggestion(s => {
     <div class="row feedback"><button class="primary" data-u="1">Me sirvió</button><button data-u="0">No</button>
     <button data-pos="1">Ahora no</button></div>`;
   c.querySelector('.txt').textContent = s.texto;
-  c.querySelector('[data-u="1"]').onclick = () => { window.tercero.feedback(s.id, true); c.remove(); };
-  c.querySelector('[data-u="0"]').onclick = () => { window.tercero.feedback(s.id, false); c.remove(); };
-  c.querySelector('[data-pos]').onclick = () => { window.tercero.snooze(10); c.remove(); };
+  c.querySelector('[data-u="1"]').onclick = () => { window.tercero.feedback(s.id, true); c.remove();if(!$('v-sugerencias').children.length)goView('home'); };
+  c.querySelector('[data-u="0"]').onclick = () => { window.tercero.feedback(s.id, false); c.remove();if(!$('v-sugerencias').children.length)goView('home'); };
+  c.querySelector('[data-pos]').onclick = () => { window.tercero.snooze(10); c.remove();if(!$('v-sugerencias').children.length)goView('home'); };
   $('v-sugerencias').replaceChildren(c);
   show('bienvenida',false);
-  if(s.tipo==='pregunta'||prefs.panelPinned)$('panel').classList.add('open');
+  if(s.tipo==='pregunta'||prefs?.panelPinned)$('panel').classList.add('open');
   layout();setTimeout(()=>c.querySelector('.feedback')?.classList.add('ready'),2500);
   c.classList.add('reveal');
 });
+window.tercero.onPipeline(message=>{if(selectedSource)$('session-status').textContent=message;});
 window.tercero.onError(m => { $('v-error').textContent = m; });
 
 // --- Clics y cierre (fix overlay) ---
@@ -171,14 +176,31 @@ document.addEventListener('mousemove', updateCT);
 document.addEventListener('mouseleave', () => { ct = true; window.tercero.setClickThrough(true); });
 
 function closeViews(){for(const id of ['v-fuentes','v-onboarding','v-prefs','v-reporte','v-options'])show(id,false);}
-function applyUi(){document.body.classList.toggle('details',!!prefs.showDetails);document.body.classList.toggle('shadow',!!prefs.smallShadow);document.body.classList.toggle('dock',prefs.dockMode==='top');$('b-pin').setAttribute('aria-pressed',String(!!prefs.panelPinned));$('b-pin').textContent=prefs.panelPinned?'Fijado':'Mantener abierto';}
-function layout(){const panel=$('panel').classList.contains('open');document.body.classList.toggle('idle',!panel);window.tercero.layout({panel,settings:$('panel').classList.contains('config'),dock:prefs?.dockMode==='top',details:!!prefs?.showDetails,view:$('panel').classList.contains('config')?'config':$('panel').classList.contains('source')?'source':$('panel').classList.contains('options')?'options':$('panel').classList.contains('context')?'context':$('panel').classList.contains('suggestion')?'suggestion':'empty'});}
-function togglePanel(){show('v-sugerencias',true);show('bienvenida',!$('v-sugerencias').children.length);if($('panel').classList.contains('config')){$('panel').classList.remove('config');show('v-prefs',false);}$('panel').classList.toggle('open');layout();}
-$('b-options').onclick=()=>{closeViews();show('v-sugerencias',false);show('v-options',true);$('panel').classList.remove('config','source','context');$('panel').classList.add('options');layout();};
-$('opt-back').onclick=()=>{closeViews();show('v-sugerencias',true);$('panel').classList.remove('options');layout();};
-$('opt-config').onclick=()=>$('b-settings').click();$('opt-pause').onclick=()=>$('b-pausa').click();$('opt-snooze').onclick=()=>$('b-posponer').click();$('opt-stop').onclick=()=>$('b-stop').click();
-window.tercero.onBlur(()=>{if(!prefs.panelPinned&&!$('panel').classList.contains('config')){$('panel').classList.remove('open');layout();}});
-$('b-close-panel').onclick=()=>{$('panel').classList.remove('open','config','options','source','context');closeViews();show('v-sugerencias',true);layout();};
+function refreshHome(){
+ const home=currentView==='home';$('welcome-home').hidden=!(home&&!selectedSource);$('session-home').hidden=!(home&&!!selectedSource);
+ $('source-name').textContent=selectedSource?.name||'';
+ $('session-pause').textContent=capturando?'Pausar':'Reanudar';
+ $('opt-pause').textContent=capturando?'Pausar captura':'Reanudar captura';
+ $('opt-pause').disabled=!selectedSource;$('opt-snooze').disabled=!selectedSource;$('opt-stop').disabled=!selectedSource;
+ $('panel').classList.toggle('active-session',home&&!!selectedSource);
+}
+function goView(view){
+ currentView=view;closeViews();$('panel').classList.remove('config','source','context','options','suggestion');
+ if(view!=='home')$('panel').classList.add(view);
+ const map={source:'v-fuentes',context:'v-onboarding',config:'v-prefs',options:'v-options',suggestion:'v-sugerencias'};
+ show('v-sugerencias',view==='suggestion');if(map[view])show(map[view],true);
+ refreshHome();$('scroll-content').scrollTop=0;layout();
+}
+function applyUi(){document.body.classList.toggle('details',!!prefs.showDetails);document.body.classList.toggle('shadow',!!prefs.smallShadow);document.body.classList.toggle('dock',prefs.dockMode==='top');$('b-pin').setAttribute('aria-pressed',String(!!prefs.panelPinned));$('b-pin').textContent=prefs.panelPinned?'Fijado':'Fijar';}
+function layout(){refreshHome();const panel=$('panel').classList.contains('open');document.body.classList.toggle('idle',!panel);window.tercero.layout({panel,settings:currentView==='config',dock:prefs?.dockMode==='top',details:!!prefs?.showDetails,view:currentView==='home'?(selectedSource?'active':'empty'):currentView});}
+function togglePanel(){if(!$('panel').classList.contains('open'))goView('home');$('panel').classList.toggle('open');layout();}
+$('b-contexto').onclick=()=>{for(const key of ['objetivo','estrategia','recursos','plazo'])$('f-'+key).value=prefs[key]||'';goView('context');};
+$('b-cerrar-setup').onclick=()=>goView('home');$('sources-back').onclick=()=>goView('home');$('settings-back').onclick=()=>goView('home');
+$('home-start').onclick=abrirFuentes;$('session-change').onclick=abrirFuentes;$('session-pause').onclick=()=>{$('b-pausa').click();setTimeout(()=>refreshHome(),100);};
+$('b-options').onclick=()=>goView('options');$('opt-back').onclick=()=>goView('home');
+$('opt-config').onclick=()=>$('b-settings').click();$('opt-pause').onclick=async()=>{await $('b-pausa').onclick();goView('home');};$('opt-snooze').onclick=async()=>{await $('b-posponer').onclick();goView('home');};$('opt-stop').onclick=async()=>{await $('b-stop').onclick();goView('home');};
+window.tercero.onBlur(()=>{if(!prefs.panelPinned&&currentView!=='config'){$('panel').classList.remove('open');layout();}});
+$('b-close-panel').onclick=()=>{$('panel').classList.remove('open');goView('home');};
 $('b-settings').onclick=()=>$('b-prefs').onclick();
 $('b-pin').onclick=async()=>{prefs=await window.tercero.setPrefs({panelPinned:!prefs.panelPinned});applyUi();};
 $('pill').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();togglePanel();}};
@@ -216,4 +238,4 @@ $('b-cerrar-app').onclick = (e) => { e.stopPropagation(); window.tercero.quitApp
 
 init();
 
-window.tercero.onTrayPaused(() => {capturando=false;setEstado('pausada','paused');$('b-pausa').textContent='Reanudar';$('hola').textContent=HOLA_PAUSA;setExpr('dormida');});
+window.tercero.onTrayPaused(() => {capturando=false;setEstado('pausada','paused');refreshHome();$('b-pausa').textContent='Reanudar';$('hola').textContent=HOLA_PAUSA;setExpr('dormida');});

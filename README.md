@@ -1,3 +1,7 @@
+## v0.2.6
+
+Interfaz con identidad Tercero, flujo de sesion y detalles legibles. Captura: corregido el stop inmediato al iniciar/reanudar y la resolucion tardia de permisos. Estados visibles para esperar imagen, analizar, falta de permiso/clave y errores. Actualizar en bandeja abre el flujo GitHub PowerShell externo con handshake antes de cerrar. Su arranque desde bandeja y Meta completo aun no estan comprobados en Windows. No se hicieron nuevas pruebas CI.
+
 ## Actualizacion GitHub v0.2.5
 
 Actualizador externo: ACTUALIZAR-TERCERO.bat o actualizar-github.ps1. Usa el repositorio privado ya autenticado con Git. Guarda el trabajo y sali de Tercero antes de actualizar. No necesita Drive. Verifica version, SHA256 y respaldo antes de reemplazar el paquete; intenta restaurar si la app no abre.

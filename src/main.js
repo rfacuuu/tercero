@@ -2,7 +2,7 @@
 // Isla flotante siempre visible + captura elegida por el usuario + sugerencias.
 // Privacidad: captura solo de la fuente elegida, pausa inmediata, nada se sube
 // sin autorizacion explicita; los frames se descartan tras el analisis.
-const { app, BrowserWindow, ipcMain, desktopCapturer, session, screen, safeStorage, Tray, Menu, nativeImage, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, desktopCapturer, session, screen, safeStorage, Tray, Menu, nativeImage, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -29,8 +29,19 @@ function showHud() {
   hud.focus();
 }
 
-async function updateFromTray() {
-  await dialog.showMessageBox({type:'info', title:'Actualizar Tercero', message:'Actualiza con ACTUALIZAR-TERCERO.bat', detail:'Guarda tu trabajo y sali de Tercero desde la bandeja. Luego hace doble clic en ACTUALIZAR-TERCERO.bat. Busca la version en GitHub, verifica el paquete y vuelve a abrir Tercero. Drive no es necesario.'});
+async function updateFromTray(){
+ if(updateBusy)return;updateBusy=true;
+ try{
+  const root=path.dirname(path.dirname(process.execPath));
+  if(process.platform!=='win32'||!app.isPackaged)throw new Error('La actualizacion desde bandeja esta disponible en la instalacion Windows.');
+  const result=await require('./update-github-launch').launch({root,oldPid:process.pid,shell,worker:fs.readFileSync(path.join(__dirname,'update-github.ps1')),onReady:async()=>{
+   const draft=hud&&!hud.isDestroyed()?await hud.webContents.executeJavaScript(`Object.fromEntries(['chat-input','f-objetivo','f-estrategia','f-recursos','f-plazo'].map(id=>[id,document.getElementById(id)?.value||'']))`):{};
+   fs.writeFileSync(path.join(app.getPath('userData'),'pending-ui-draft.json'),JSON.stringify({fields:draft,savedAt:new Date().toISOString()}));
+   paused=true;stopCapture();setTimeout(()=>app.quit(),300);
+  }});
+  if(result.current)await dialog.showMessageBox({type:'info',message:'Ya tenes la ultima version de Tercero.'});
+ }catch(e){await dialog.showMessageBox({type:'error',title:'No se pudo actualizar',message:String(e.message),detail:'Tercero sigue abierto si el reemplazo no comenzo. No se envian capturas para actualizar.'});}
+ finally{updateBusy=false;}
 }
 
 function createTray() {
@@ -42,7 +53,7 @@ function createTray() {
     {label:'Mostrar Tercero', click:showHud},
     {label:'Pausar captura', click:()=>{paused=true;stopCapture();sessionLog.add({ts:Date.now(),kind:'pause'});if(hud)hud.webContents.send('hud:tray-paused');}},
     {type:'separator'},
-    {label:'Como actualizar (GitHub)', click:updateFromTray},
+    {label:'Actualizar', click:updateFromTray},
     {type:'separator'},
     {label:'Salir de Tercero', click:()=>app.quit()}
   ]));
@@ -119,34 +130,36 @@ function stopCapture() {
 }
 
 function scheduleCapture() {
-  stopCapture();
+  if(captureTimer){clearInterval(captureTimer);captureTimer=null;}
   const p = prefs.get();
   if (!currentSourceId || paused) return;
   const intervalMs = Math.max(5, p.captureIntervalSec || 20) * 1000;
   captureTimer = setInterval(tickCapture, intervalMs);
 }
 
+function pipeline(message){if(hud&&!hud.isDestroyed())hud.webContents.send('hud:pipeline',message);}
 async function tickCapture() {
   if (paused || Date.now() < snoozedUntil || !captureWin) return;
   try {
     const jpeg = await captureWin.webContents.executeJavaScript('window.terceroCapture && window.terceroCapture.grabFrame()');
-    if (!jpeg) return;
-    if (!lastFrame) { lastFrame = jpeg; if (TEST) fs.appendFileSync('/tmp/tick-errors.log', new Date().toISOString() + ' baseline\n'); return; } // primer frame = referencia, sin IA
+    if (!jpeg){pipeline('Esperando imagen de la ventana…');return;}
+    if (!lastFrame) { lastFrame = jpeg;pipeline('Ventana lista. Espero un cambio para comentar.'); if (TEST) fs.appendFileSync('/tmp/tick-errors.log', new Date().toISOString() + ' baseline\n'); return; } // primer frame = referencia, sin IA
     const changed = sessionLog.frameChanged(lastFrame, jpeg);
     lastFrame = jpeg;
     if (TEST) fs.appendFileSync('/tmp/tick-errors.log', new Date().toISOString() + ' tick changed=' + changed + '\n');
-    if (!changed) return; // sin avance visible, no molestar
+    if (!changed){pipeline('Sin cambios nuevos. Sigo acompañando.');return;} // sin avance visible, no molestar
     const p = prefs.get();
     if (TEST) fs.appendFileSync('/tmp/tick-errors.log', new Date().toISOString() + ' gate mode=' + ai.status(p).mode + ' consent=' + JSON.stringify(p.aiConsent) + ' keys=' + Object.keys(p).join(',') + '\n');
-    if (ai.status(p).mode === 'meta' && !p.aiConsent) return; // sin consentimiento, nada sale de la PC
+    if(ai.status(p).mode==='meta'&&!p.aiConsent){pipeline('Meta necesita tu permiso en Ajustes.');return;}if(ai.status(p).mode==='meta'&&!ai.status(p).metaReady){pipeline('Meta necesita una clave guardada en Ajustes.');return;}pipeline(ai.status(p).mode==='meta'?'Analizando con Meta…':'Preparando una idea de Demo…'); // sin consentimiento, nada sale de la PC
     const entry = await ai.analyzeFrame(jpeg, p, sessionLog.recent());
     if (TEST) fs.appendFileSync('/tmp/tick-errors.log', new Date().toISOString() + ' ai-result=' + JSON.stringify(entry) + '\n');
-    if (entry) { // null = el criterio (mock o Meta) decidio no intervenir: no molestar
+    if(!entry)pipeline('Analizado. No hay una sugerencia útil ahora.');
+    if (entry) {pipeline('Nueva idea para tu diseño.'); // null = el criterio (mock o Meta) decidio no intervenir: no molestar
       sessionLog.add({ ts: Date.now(), kind: 'suggestion', ...entry, frameKept: prefs.get().frameRetention === 'guardar-local' });
       hud.webContents.send('hud:suggestion', entry);
     }
   } catch (e) {
-    hud.webContents.send('hud:error', String(e && e.message || e));
+    pipeline('No se pudo analizar. Revisá el error.');hud.webContents.send('hud:error', String(e && e.message || e));
     if (TEST) fs.appendFileSync('/tmp/tick-errors.log', new Date().toISOString() + ' ' + String(e && e.stack || e) + '\n');
   }
 }
@@ -212,13 +225,14 @@ app.on('before-quit', () => { stopCapture(); if (tray) {tray.destroy();tray=null
 
 app.on('window-all-closed', () => { stopCapture(); app.quit(); });
 
+ipcMain.on('capture:stream-error',(_e,message)=>{pipeline('No se pudo iniciar la captura.');if(hud)hud.webContents.send('hud:error',String(message));});
 ipcMain.handle('sources:list', async () => {
   const sources = await desktopCapturer.getSources({ types: ['window', 'screen'], thumbnailSize: { width: 320, height: 180 }, fetchWindowIcons: true });
   return sources.map(s => ({ id: s.id, name: s.name, appIcon: s.appIcon ? s.appIcon.toDataURL() : null, thumb: s.thumbnail.toDataURL() }));
 });
 
 ipcMain.handle('capture:start', async (_e, sourceId) => {
-  currentSourceId = sourceId; paused = false;
+  currentSourceId = sourceId; paused = false;lastFrame=null;snoozedUntil=0;
   captureWin.webContents.send('capture:start-stream', sourceId);
   sessionLog.add({ ts: Date.now(), kind: 'session-start', sourceId });
   scheduleCapture();
@@ -226,7 +240,7 @@ ipcMain.handle('capture:start', async (_e, sourceId) => {
 });
 
 ipcMain.handle('capture:pause', () => { paused = true; stopCapture(); sessionLog.add({ ts: Date.now(), kind: 'pause' }); return { ok: true }; });
-ipcMain.handle('capture:resume', () => { paused = false; if (captureWin) captureWin.webContents.send('capture:start-stream', currentSourceId); scheduleCapture(); sessionLog.add({ ts: Date.now(), kind: 'resume' }); return { ok: true }; });
+ipcMain.handle('capture:resume', () => { if(!currentSourceId)return {ok:false,error:'Primero elegi una ventana'};snoozedUntil=0;paused = false; if (captureWin) captureWin.webContents.send('capture:start-stream', currentSourceId); scheduleCapture(); sessionLog.add({ ts: Date.now(), kind: 'resume' }); return { ok: true }; });
 ipcMain.handle('capture:stop', () => { currentSourceId = null; stopCapture(); sessionLog.add({ ts: Date.now(), kind: 'session-stop' }); return { ok: true }; });
 
 ipcMain.handle('hud:snooze', (_e, minutes) => { snoozedUntil = Date.now() + Math.max(1, minutes || 10) * 60000; return { snoozedUntil }; });
@@ -256,7 +270,7 @@ ipcMain.handle('session:note', (_e, texto) => {
 });
 // La ventana se achica/crece con el contenido visible: nada de area invisible que robe clics.
 let uiState={panel:false,settings:false,dock:false,details:false};let dockTimer=null;
-function placeUi(state){if(!hud)return;uiState=state;const b=hud.getBounds(),area=screen.getDisplayMatching(b).workArea;let w=state.panel?424:(state.details?274:132);const heights={empty:282,suggestion:420,source:468,options:444,context:534,config:574};let h=state.panel?(heights[state.view]||318):134;w=Math.min(w,area.width);h=Math.min(h,area.height);let x=b.x+b.width-w,y=b.y+b.height-h;if(state.dock){x=area.x+Math.round((area.width-w)/2);y=area.y;if(!state.panel)h=134;}x=Math.max(area.x,Math.min(area.x+area.width-w,x));y=Math.max(area.y,Math.min(area.y+area.height-h,y));hud.setBounds({x,y,width:w,height:h});}
+function placeUi(state){if(!hud)return;uiState=state;const b=hud.getBounds(),area=screen.getDisplayMatching(b).workArea;let w=state.panel?424:(state.details?312:132);const heights={empty:530,active:582,suggestion:544,source:614,options:538,context:614,config:614};let h=state.panel?(heights[state.view]||318):134;w=Math.min(w,area.width);h=Math.min(h,area.height);let x=b.x+b.width-w,y=b.y+b.height-h;if(state.dock){x=area.x+Math.round((area.width-w)/2);y=area.y;if(!state.panel)h=134;}x=Math.max(area.x,Math.min(area.x+area.width-w,x));y=Math.max(area.y,Math.min(area.y+area.height-h,y));hud.setBounds({x,y,width:w,height:h});}
 ipcMain.handle('hud:layout',(_e,state)=>{placeUi(state);return {ok:true};});
 app.whenReady().then(()=>{dockTimer=setInterval(()=>{if(!hud||hud.isDestroyed()||!uiState.dock||uiState.panel)return;const p=screen.getCursorScreenPoint(),b=hud.getBounds();const over=p.x>=b.x&&p.x<=b.x+b.width&&p.y>=b.y&&p.y<=b.y+b.height;hud.webContents.send('hud:dock-reveal',over);},160);screen.on('display-metrics-changed',()=>placeUi(uiState));});
 app.on('before-quit',()=>{if(dockTimer)clearInterval(dockTimer);});
