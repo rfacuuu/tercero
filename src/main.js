@@ -146,15 +146,17 @@ async function tickCapture() {
   analysisBusy=true;const epoch=workEpoch;companion.hide(true);
   try {
     await new Promise(r=>setTimeout(r,75));
-    const jpeg = await captureWin.webContents.executeJavaScript('window.terceroCapture && window.terceroCapture.grabFrame()');
+    const frame = await captureWin.webContents.executeJavaScript('window.terceroCapture && window.terceroCapture.grabFrame()');
     companion.hide(false);
     if(epoch!==workEpoch||paused||!currentSourceId)return;
-    if (!jpeg){pipeline('Esperando imagen de la ventana…');return;}
-    if (!lastFrame) { lastFrame = jpeg;pipeline('Ventana lista. Espero un cambio para comentar.'); if (TEST) fs.appendFileSync('/tmp/tick-errors.log', new Date().toISOString() + ' baseline\n'); return; } // primer frame = referencia, sin IA
-    const changed = sessionLog.frameChanged(lastFrame, jpeg);
-    lastFrame = jpeg;
+    if (!frame||!frame.jpeg){pipeline('Esperando imagen de la ventana…');return;}
+    const jpeg=frame.jpeg,signature=frame.signature;
+    if (!lastFrame) { lastFrame = signature;pipeline('Ventana lista. Espero un cambio para comentar.'); if (TEST) fs.appendFileSync('/tmp/tick-errors.log', new Date().toISOString() + ' baseline\n'); return; } // primer frame = referencia, sin IA
+    const changed = sessionLog.frameChanged(lastFrame, signature);
+
     if (TEST) fs.appendFileSync('/tmp/tick-errors.log', new Date().toISOString() + ' tick changed=' + changed + '\n');
-    if (!changed){pipeline('Sin cambios nuevos. Sigo acompañando.');return;} // sin avance visible, no molestar
+    if (!changed){pipeline('En pausa: sin cambios en el diseño.');return;}
+    lastFrame=signature; // sin avance visible, no molestar
     const p = prefs.get();
     if (TEST) fs.appendFileSync('/tmp/tick-errors.log', new Date().toISOString() + ' gate mode=' + ai.status(p).mode + ' consent=' + JSON.stringify(p.aiConsent) + ' keys=' + Object.keys(p).join(',') + '\n');
     if(ai.status(p).mode==='meta'&&!p.aiConsent){pipeline('Meta necesita tu permiso en Ajustes.');return;}if(ai.status(p).mode==='meta'&&!ai.status(p).metaReady){pipeline('Meta necesita una clave guardada en Ajustes.');return;}pipeline(ai.status(p).mode==='meta'?'Analizando con Meta…':'Preparando una idea de Demo…'); // sin consentimiento, nada sale de la PC
@@ -253,7 +255,7 @@ ipcMain.handle('capture:pause', () => { paused = true; stopCapture(); sessionLog
 ipcMain.handle('capture:resume', () => { if(!currentSourceId)return {ok:false,error:'Primero elegi una ventana'};snoozedUntil=0;paused = false; if (captureWin) captureWin.webContents.send('capture:start-stream', currentSourceId); scheduleCapture(); sessionLog.add({ ts: Date.now(), kind: 'resume' }); return { ok: true }; });
 ipcMain.handle('capture:stop', () => { currentSourceId = null; stopCapture(); sessionLog.add({ ts: Date.now(), kind: 'session-stop' }); return { ok: true }; });
 
-ipcMain.handle('hud:snooze', (_e, minutes) => { snoozedUntil = Date.now() + Math.max(1, minutes || 10) * 60000; return { snoozedUntil }; });
+ipcMain.handle('hud:snooze', (_e, minutes) => { companion.setState('pausa');snoozedUntil = Date.now() + Math.max(1, minutes || 10) * 60000; return { snoozedUntil }; });
 ipcMain.handle('prefs:get', () => prefs.get());
 ipcMain.handle('prefs:set', (_e, patch) => { if(patch.aiMode==='mock'){patch.aiConsent=false;patch.textConsent=false;workEpoch++;}const p = prefs.set(patch); scheduleCapture(); return p; });
 ipcMain.handle('session:recent', () => sessionLog.recent(50));

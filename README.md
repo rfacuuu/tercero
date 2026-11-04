@@ -1,3 +1,11 @@
+## v0.2.8
+
+Cursor nativo intacto: se retira el PNG B del overlay y su recorrido autónomo. Estela azul sutil solo al mover, glow durante análisis/respuesta real pendiente, efectos ocultos en pausa y opción de desactivarlos. Destello de un segundo junto a la mascota al llegar un comentario/respuesta. Mascota PNG original azul sin boca, bordes limpiados y remuestreo; estados ahora comunicados por luz/texto, sin caras distintas. Iconos Phosphor core 2.1.1 MIT incluidos localmente y checks azul pálido.
+
+Pausa automática de análisis por diseño sin cambios: comparación de firma RGB reducida 64x40 en vez de bytes JPEG. Filtro visual heurístico: diferencia media de canal >18 en al menos 1.2% de píxeles y diferencia media global >=0.5. Referencia contra último análisis para acumular cambios. Sigue observación local para reanudar ante avance visible; no es pausa temporal ni reconocimiento semántico. Cambios muy pequeños pueden no superar el filtro; animaciones grandes dentro de la ventana sí pueden hacerlo.
+
+QA aislado: 10 ticks sin cambio no invocan provider, un cambio visual lo invoca una vez, 10 ticks iguales posteriores no repiten y muestran pausa. Ruido y cursor mínimo ignorados. UI Electron y regresión comentarios/permisos/streams probados; ninguna llamada Meta real ni CI ni gasto. Windows nativo/DPI/Meta E2E siguen pendientes. Instalador/updater externos intactos.
+
 ## v0.2.7
 
 Mini cursor B cerámico sin rostro, proporción fija, rotación direccional, acompañar/explorar/desactivar y menos movimiento. Explorar es movimiento geométrico decorativo, no reconocimiento de Capas ni controles. No hace clic ni modifica el diseño. Mascota original conservada como launcher separado.
