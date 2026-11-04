@@ -1,6 +1,6 @@
 const $ = id => document.getElementById(id);
 const show = (id, on) => $(id).style.display = on ? 'block' : 'none';
-let prefs = null, capturando = false;
+let prefs = null, capturando = false, pendingQuestion = null;
 
 // --- Pluma: expresiones segun estado ---
 const EXPR = { feliz: 'assets/pluma-feliz.png', pensativa: 'assets/pluma-pensativa.png',
@@ -25,8 +25,10 @@ async function init() {
   prefs = await window.tercero.getPrefs();
   const ai = await window.tercero.aiStatus();
   $('aiMode').textContent = ai.mode === 'mock' ? 'demo sin IA' : 'Meta';
-  setExpr('dormida');
-  $('panel').classList.add('open');
+  setExpr('feliz');
+  applyUi();
+  $('panel').classList.toggle('open', !!prefs.panelPinned);
+  layout();
   show('v-onboarding', false); show('controles', true);
 }
 
@@ -39,18 +41,19 @@ $('b-onboard').onclick = async () => {
   show('v-onboarding', false); show('bienvenida', true); show('controles', true);
 };
 
-$('b-contexto').onclick = () => {show('v-onboarding',true);show('bienvenida',false);};
+$('b-contexto').onclick = () => {closeViews();show('v-onboarding',true);show('bienvenida',false);};
 $('b-cerrar-setup').onclick = () => {show('v-onboarding',false);show('bienvenida',true);};
 $('b-elegir').onclick = () => abrirFuentes();
 
 async function abrirFuentes() {
+  $('panel').classList.remove('config');layout();
   show('v-fuentes', true);show('bienvenida',false);
   const fuentes = await window.tercero.listSources();
-  const lista = $('lista-fuentes'); lista.innerHTML = '';
+  closeViews();show('v-fuentes',true);const lista = $('lista-fuentes'); lista.innerHTML = '';
   for (const f of fuentes) {
     const d = document.createElement('div');
     d.className = 'src';
-    d.innerHTML = `<img src="${f.thumb}"><span>${f.name}</span>`;
+    const thumb=document.createElement("img");thumb.src=f.thumb;const title=document.createElement("span");title.textContent=f.name;d.append(thumb,title);
     d.onclick = async () => {
       await window.tercero.startCapture(f.id);
       capturando = true; show('v-fuentes', false);
@@ -75,7 +78,9 @@ $('b-fuente').onclick = abrirFuentes;
 $('b-stop').onclick = async () => { await window.tercero.stop(); capturando = false; setEstado('sin captura'); setExpr('dormida'); $('hola').textContent = HOLA_IDLE; };
 
 $('b-prefs').onclick = async () => {
+  closeViews();show('bienvenida',false);show('v-sugerencias',false);$('panel').classList.add('open','config');layout();
   prefs = await window.tercero.getPrefs();
+  $('p-dock').value=prefs.dockMode||'floating';$('p-pin').checked=!!prefs.panelPinned;$('p-details').checked=!!prefs.showDetails;$('p-shadow').checked=!!prefs.smallShadow;
   $('p-interval').value = prefs.captureIntervalSec;
   $('p-frecuencia').value = prefs.frecuenciaIntervencion;
   $('p-retencion').value = prefs.frameRetention;
@@ -98,6 +103,7 @@ $('b-guardar-key').onclick = async () => {
 $('b-borrar-key').onclick = async () => { await window.tercero.clearAiKey(); $('key-estado').textContent = 'clave borrada'; };
 $('b-guardar-prefs').onclick = async () => {
   prefs = await window.tercero.setPrefs({
+    dockMode:$('p-dock').value,panelPinned:$('p-pin').checked,showDetails:$('p-details').checked,smallShadow:$('p-shadow').checked,
     captureIntervalSec: parseInt($('p-interval').value) || 20,
     frecuenciaIntervencion: $('p-frecuencia').value,
     frameRetention: $('p-retencion').value,
@@ -106,7 +112,7 @@ $('b-guardar-prefs').onclick = async () => {
   });
   const ai = await window.tercero.aiStatus();
   $('aiMode').textContent = ai.mode === 'mock' ? 'demo sin IA' : 'Meta';
-  show('v-prefs', false);
+  show('v-prefs', false);show('v-sugerencias',true);show('bienvenida',!$('v-sugerencias').children.length);$('panel').classList.remove('config');applyUi();layout();
 };
 
 $('b-reporte').onclick = async () => {
@@ -121,11 +127,12 @@ $('b-cerrar-reporte').onclick = () => show('v-reporte', false);
 async function enviarNota() {
   const t = $('chat-input').value.trim();
   if (!t) return;
-  const r = await window.tercero.addNote(t);
+  const r = await window.tercero.addNote({texto:t,replyTo:pendingQuestion?.id||null,question:pendingQuestion?.texto||null});
   if (!r.ok) return;
   $('chat-input').value = '';
   const n = document.createElement('div');
-  n.className = 'nota'; n.textContent = t;
+  n.className = 'nota'; n.textContent = pendingQuestion ? 'Tu respuesta: '+t : t;
+  pendingQuestion=null;$('chat-input').placeholder='Escribir contexto...';
   $('v-sugerencias').prepend(n);
   setExpr('pensativa', 2500);
 }
@@ -134,10 +141,11 @@ $('chat-input').addEventListener('keydown', e => { if (e.key === 'Enter') enviar
 
 window.tercero.onSuggestion(s => {
   setExpr('emocionada', 4000);
+  if(s.tipo==='pregunta'){pendingQuestion={id:s.id,texto:s.texto};$('chat-input').placeholder='Responder a esta pregunta...';}
   const c = document.createElement('div');
   c.className = 'card';
   c.innerHTML = `<div class="tipo">${s.tipo === 'pregunta' ? 'Pregunta' : 'Sugerencia'}${s.mock ? ' · demo' : ''}</div><div class="txt"></div>
-    <div class="row"><button class="primary" data-u="1">Me sirvió</button><button data-u="0">No</button>
+    <div class="row feedback"><button class="primary" data-u="1">Me sirvió</button><button data-u="0">No</button>
     <button data-pos="1">Ahora no</button></div>`;
   c.querySelector('.txt').textContent = s.texto;
   c.querySelector('[data-u="1"]').onclick = () => { window.tercero.feedback(s.id, true); c.remove(); };
@@ -145,7 +153,9 @@ window.tercero.onSuggestion(s => {
   c.querySelector('[data-pos]').onclick = () => { window.tercero.snooze(10); c.remove(); };
   $('v-sugerencias').replaceChildren(c);
   show('bienvenida',false);
-  $('panel').classList.add('open');
+  if(s.tipo==='pregunta'||prefs.panelPinned)$('panel').classList.add('open');
+  layout();setTimeout(()=>c.querySelector('.feedback')?.classList.add('ready'),2500);
+  c.classList.add('reveal');
 });
 window.tercero.onError(m => { $('v-error').textContent = m; });
 
@@ -159,11 +169,16 @@ function updateCT(e) {
 document.addEventListener('mousemove', updateCT);
 document.addEventListener('mouseleave', () => { ct = true; window.tercero.setClickThrough(true); });
 
-// La ventana se ajusta al alto visible: nada de area transparente que robe clics.
-const isla = $('isla');
-const avisarAlto = () => window.tercero.setHeight(isla.offsetHeight + 4);
-new ResizeObserver(avisarAlto).observe(isla);
-window.addEventListener('load', avisarAlto);
+function closeViews(){for(const id of ['v-fuentes','v-onboarding','v-prefs','v-reporte'])show(id,false);}
+function applyUi(){document.body.classList.toggle('details',!!prefs.showDetails);document.body.classList.toggle('shadow',!!prefs.smallShadow);document.body.classList.toggle('dock',prefs.dockMode==='top');$('b-pin').style.color=prefs.panelPinned?'#70b5ff':'';}
+function layout(){const panel=$('panel').classList.contains('open');document.body.classList.toggle('idle',!panel);window.tercero.layout({panel,settings:$('panel').classList.contains('config'),dock:prefs?.dockMode==='top',details:!!prefs?.showDetails});}
+function togglePanel(){show('v-sugerencias',true);show('bienvenida',!$('v-sugerencias').children.length);if($('panel').classList.contains('config')){$('panel').classList.remove('config');show('v-prefs',false);}$('panel').classList.toggle('open');layout();}
+$('b-close-panel').onclick=()=>{$('panel').classList.remove('open','config');show('v-prefs',false);layout();};
+$('b-settings').onclick=()=>$('b-prefs').onclick();
+$('b-pin').onclick=async()=>{prefs=await window.tercero.setPrefs({panelPinned:!prefs.panelPinned});applyUi();};
+$('pill').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();togglePanel();}};
+window.tercero.onDockReveal(on=>document.body.classList.toggle('revealed',on));
+window.addEventListener('load',()=>{if(prefs)layout();});
 
 $('b-cerrar-app').onclick = (e) => { e.stopPropagation(); window.tercero.quitApp(); };
 
@@ -188,7 +203,7 @@ $('b-cerrar-app').onclick = (e) => { e.stopPropagation(); window.tercero.quitApp
     raf = requestAnimationFrame(() => { raf = 0; window.tercero.dragTo(tx, ty); });
   });
   document.addEventListener('mouseup', () => {
-    if (start && !moved) $('panel').classList.toggle('open');
+    if (start && !moved) togglePanel();
     start = null;
     pill.classList.remove('dragging');
   });

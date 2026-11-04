@@ -3,83 +3,14 @@
 <head>
 <meta charset="utf-8">
 <style>
-  @font-face { font-family: 'Inter'; src: url('assets/fonts/inter-400.woff2') format('woff2'); font-weight: 400; font-display: swap; }
-  @font-face { font-family: 'Inter'; src: url('assets/fonts/inter-600.woff2') format('woff2'); font-weight: 600; font-display: swap; }
-  @font-face { font-family: 'Inter'; src: url('assets/fonts/inter-700.woff2') format('woff2'); font-weight: 700; font-display: swap; }
-  * { box-sizing: border-box; margin: 0; font-family: 'Inter', system-ui, sans-serif; }
-  html, body { background: transparent; overflow: hidden; }
-  #isla {
-    background: rgba(18,18,24,.92); color: #f2f2f7; border-radius: 22px;
-    padding: 10px 14px; backdrop-filter: blur(8px);
-    box-shadow: 0 6px 24px rgba(0,0,0,.45); width: 100%; min-height: 44px;
-  }
-  #pill { display: flex; align-items: center; gap: 9px; cursor: grab; user-select: none; }
-  #pill.dragging { cursor: grabbing; }
-  #pluma-pill { width: 30px; height: 30px; object-fit: contain; pointer-events: none; filter: drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
-  #b-cerrar-app { cursor: pointer; font-size: 14px; line-height: 1; padding: 2px 5px; border-radius: 6px; opacity: .7; }
-  #b-cerrar-app:hover { background: #453030; opacity: 1; }
-  #dot { width: 9px; height: 9px; border-radius: 50%; background: #555; }
-  #dot.on { background: #4cd964; } #dot.paused { background: #ffcc00; }
-  #pill .t { font-size: 13px; font-weight: 700; letter-spacing: .01em; }
-  #pill .s { font-size: 11px; opacity: .65; flex: 1; }
-  #panel { display: none; margin-top: 10px; font-size: 12.5px; }
-  #panel.open { display: block; }
-  #cabecera { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
-  #pluma-panel { width: 64px; height: 64px; object-fit: contain; filter: drop-shadow(0 3px 5px rgba(0,0,0,.5)); }
-  #cabecera .hola { font-size: 12px; opacity: .75; line-height: 1.35; }
-  .row { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; align-items: center; }
-  button { background: #2c2c36; color: #eee; border: 0; border-radius: 10px; padding: 6px 10px; font-size: 12px; cursor: pointer; font-family: inherit; }
-  button:hover { background: #3a3a48; }
-  button.primary { background: #0a84ff; }
-  input, select, textarea { background: #1c1c24; color: #eee; border: 1px solid #333; border-radius: 8px; padding: 5px 8px; font-size: 12px; width: 100%; font-family: inherit; }
-  label { font-size: 11px; opacity: .7; display: block; margin: 6px 0 2px; }
-  /* Tarjeta de sugerencia (estilo B) */
-  .card { background: #23232e; border-radius: 14px; padding: 10px 12px; margin-top: 8px; }
-  .card .tipo { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; opacity: .55; }
-  .card .txt { margin: 5px 0 8px; line-height: 1.4; }
-  .card .row { margin: 0; }
-  .nota { background: #0a84ff; border-radius: 14px 14px 4px 14px; padding: 7px 11px; margin-top: 8px; margin-left: 48px; font-size: 12.5px; line-height: 1.35; }
-  .src { display: flex; align-items: center; gap: 8px; background: #23232e; border-radius: 10px; padding: 6px; margin-top: 6px; cursor: pointer; }
-  .src img { width: 64px; border-radius: 6px; }
-  .src:hover { background: #2c2c3a; }
-  .muted { opacity: .55; font-size: 11px; }
-  .mock { color: #ff9f0a; font-size: 10px; }
-  #chat-row { display: flex; gap: 6px; margin-top: 10px; }
-  #chat-input { flex: 1; border-radius: 12px; }
-  #b-chat { border-radius: 12px; padding: 6px 12px; }
-  pre#reporte { white-space: pre-wrap; background: #14141a; border-radius: 10px; padding: 8px; max-height: 220px; overflow: auto; font-size: 11px; }
-
-/* Composicion B: burbuja separada y personaje como ancla inferior. */
-#isla {background:transparent;box-shadow:none;backdrop-filter:none;padding:12px;width:480px;display:flex;flex-direction:column;align-items:flex-end;gap:16px;}
-#panel {position:relative;background:rgba(25,26,34,.98);border:1px solid #393b48;box-shadow:0 8px 28px #0006;border-radius:22px;padding:18px;margin:0;width:420px;overflow:visible;flex-shrink:0;scrollbar-width:thin;scrollbar-color:#4b4e5c transparent;}
-#panel::after {content:'';position:absolute;bottom:-9px;right:45px;width:18px;height:18px;transform:rotate(45deg);background:#191a22;border-right:1px solid #393b48;border-bottom:1px solid #393b48;}
-#pill {flex-shrink:0;background:rgba(22,23,30,.96);border:1px solid #363845;border-radius:26px;padding:6px 12px 6px 3px;gap:8px;width:fit-content;max-width:450px;min-height:72px;}
-#pluma-pill {width:56px;height:64px;object-fit:contain;}
-#pill .t {font-size:13px;} #pill .s {max-width:150px;font-size:10px;}
-#cabecera {margin:0 0 12px;border-bottom:1px solid #353743;padding-bottom:10px;}
-#cabecera .hola {font-size:11px;line-height:1.5;}
-.card {background:transparent;padding:0;border-radius:0;margin-top:4px;}
-.card .txt, #bienvenida .txt {font-size:16px;line-height:1.5;margin:9px 0 16px;font-weight:400;}
-.card .tipo,.tipo {font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#a7abb9;}
-.card .row button {min-width:82px;padding:9px 11px;}
-button {padding:8px 11px;}button.primary{background:#008cff;}
-#chat-row {border-top:1px solid #353743;padding-top:14px;margin-top:16px;}
-#chat-input {padding:10px 12px;border-radius:14px;}
-#herramientas summary {cursor:pointer;font-size:10px;color:#adb2c4;padding:6px 8px;}
-#herramientas .row {max-width:350px;}
-#controles {gap:6px;margin:12px 0 0;}#controles button {font-size:10px;padding:6px 8px;}
-#v-onboarding,#v-prefs,#v-fuentes,#v-reporte {max-height:350px;overflow-y:auto;}
-#v-onboarding {background:#22242e;border-radius:14px;padding:14px;}
-#v-onboarding input {padding:8px 10px;margin-bottom:3px;}
-.nota {margin:10px 0 10px 30px;font-size:13px;}
-#v-sugerencias:has(.card) + #bienvenida {display:none;}
-
+@font-face{font-family:Inter;src:url('assets/fonts/inter-400.woff2')}@font-face{font-family:Inter;src:url('assets/fonts/inter-600.woff2');font-weight:600}
+*{box-sizing:border-box;font-family:Inter,system-ui,sans-serif}html,body{margin:0;background:transparent;color:#e4edf9;overflow:hidden;font-size:12px}#isla{width:100%;height:100vh;padding:12px;display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-end;gap:10px}#panel{display:none;width:400px;height:334px;max-width:100%;max-height:calc(100vh - 136px);flex:none;background:#172231fa;border:1px solid #38506a;border-radius:20px;padding:16px;overflow:hidden;position:relative;box-shadow:0 5px 16px #0003}#panel.open{display:flex;flex-direction:column}#cabecera{display:none}#pluma-panel{display:none}#panel-top{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex:none}#panel-top .title{color:#a8bdd4;font-size:11px;flex:1}#scroll-content{overflow:auto;min-height:0;flex:1;scrollbar-width:thin;scrollbar-color:#4e657f transparent}button{border:1px solid #3b526e;background:#26364d;color:#dce8f8;border-radius:9px;font-size:11px;padding:7px 10px;cursor:pointer}button:hover{background:#354d6b}button.primary{background:#378bf6;border-color:#378bf6;color:white}button.icon{padding:4px 8px;background:transparent;border-color:transparent;font-size:15px}input,select,textarea{width:100%;min-width:0;background:#101b2a;color:#e2ecfa;border:1px solid #3a526d;border-radius:9px;padding:8px;font-size:12px}label{font-size:11px;color:#acbfd5;display:block;margin:12px 0 5px}.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:9px 0}.muted{color:#8fa8c3;font-size:10px;line-height:1.5}.tipo{font-size:10px;color:#91a9c5;margin-bottom:8px}.txt{font-size:15px;line-height:1.5;margin:8px 0 12px}.card{margin-bottom:10px}.nota{padding:8px 10px;border-radius:12px;background:#235591;margin:8px 0 8px 30px;line-height:1.5}.src{display:flex;align-items:center;gap:8px;background:#213147;padding:7px;border-radius:10px;margin:6px 0;cursor:pointer}.src img{width:70px;border-radius:5px}.src span{overflow-wrap:anywhere}.src:hover{background:#314a68}#chat-row{display:flex;gap:7px;margin-top:10px;flex:none}#chat-input{flex:1}#controles{flex:none;margin:9px 0 0;gap:5px}#controles button,#herramientas summary{font-size:10px;padding:5px 7px}#herramientas{position:relative}#herramientas summary{cursor:pointer;color:#b7c9de}#herramientas[open] .row{position:absolute;right:0;bottom:25px;width:220px;padding:10px;background:#17293f;border:1px solid #3b526e;border-radius:12px;z-index:4}#v-prefs,#v-fuentes,#v-onboarding{height:auto;overflow:visible}#v-prefs .card{border-radius:9px;padding:10px}#v-prefs .txt{font-size:11px}#v-error{max-height:28px;overflow:auto;flex:none}#pill{width:108px;height:110px;position:relative;cursor:grab;flex:none;user-select:none;touch-action:none}#pill.dragging{cursor:grabbing}#pluma-pill{width:108px;height:108px;object-fit:contain;pointer-events:none;filter:none}#pill .t,#pill .s,#dot,#version,#aiMode,#b-cerrar-app{display:none}body.details #pill{width:250px;display:flex;align-items:center;gap:5px}body.details #pill .t,body.details #pill .s,body.details #version,body.details #aiMode{display:inline;font-size:10px}body.details #dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#66758a}#dot.on{background:#61d293!important}#dot.paused{background:#e5c05d!important}.shadow #pill:after{content:'';position:absolute;width:54px;height:5px;border-radius:50%;background:#16263955;bottom:1px;left:27px;filter:blur(2px)}#v-reporte,#b-reporte,#b-fuente{display:none!important}#reporte{white-space:pre-wrap}#panel.config #chat-row,#panel.config #controles,#panel.config #b-pin{display:none!important}#panel.config{height:440px}#panel:not(.config) #v-prefs{display:none!important}.feedback{opacity:0;pointer-events:none;transition:opacity .2s}.feedback.ready{opacity:1;pointer-events:auto}.card.reveal{animation:reveal .24s ease-out}body.dock.idle #isla{padding:0;align-items:center}body.dock.idle #pill{transform:translateY(-87px)}body.dock.idle.revealed #pill{transform:none}body.dock #pill{transition:transform .18s ease}#close-settings{float:right}input[type=checkbox]{width:auto;margin-right:8px}#ui-prefs{border-bottom:1px solid #38506a;padding-bottom:10px;margin-bottom:12px}.pref-check{display:flex;align-items:center;font-size:12px;color:#d5e3f4;margin:9px 0}#pill:focus-visible,button:focus-visible{outline:2px solid #a6d1ff;outline-offset:2px}@keyframes reveal{from{opacity:0;filter:blur(3px);transform:translateY(4px)}to{opacity:1;filter:none;transform:none}}@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 <div id="isla">
   <div id="panel">
-    <div id="cabecera">
+    <div id="panel-top"><span class="title">Tercero</span><button id="b-pin" class="icon" title="Mantener panel abierto">⌖</button><button id="b-settings" class="icon" title="Configuración">⚙</button><button id="b-close-panel" class="icon" title="Ocultar panel">×</button></div><div id="scroll-content"><div id="cabecera">
       <img id="pluma-panel" src="assets/pluma-dormida.png" alt="" hidden>
       <div class="hola" id="hola">Todavía no estoy mirando nada. Elegí qué ventana acompaño.</div>
     </div>
@@ -97,23 +28,8 @@ button {padding:8px 11px;}button.primary{background:#008cff;}
     </div>
     <div id="v-sugerencias"></div>
     <div id="bienvenida"><div class="tipo">A tu ritmo</div><div class="txt">Elegí una ventana para acompañar tu diseño. Vos decidís qué cambiar.</div></div>
-    <div id="chat-row">
-      <input id="chat-input" placeholder="Escribir contexto..." maxlength="500">
-      <button class="primary" id="b-chat" title="Enviar">➤</button>
-    </div>
-    <div class="row" id="controles" style="display:none">
-      <button class="primary" id="b-elegir">Elegir ventana</button>
-      <button id="b-contexto">Contexto</button>
-      <details id="herramientas"><summary>Opciones</summary><div class="row">
-      <button id="b-pausa">Pausar</button>
-      <button id="b-posponer">Posponer 10 min</button>
-      <button id="b-fuente">Cambiar ventana</button>
-      <button id="b-reporte">Borrador portfolio</button>
-      <button id="b-prefs">Preferencias</button>
-      <button id="b-stop">Terminar</button></div></details>
-    </div>
     <div id="v-prefs" style="display:none">
-      <b>Preferencias</b> <span class="muted">visibles y editables</span>
+      <div id="ui-prefs"><b>Configuración</b><label>Vista de la mascota</label><select id="p-dock"><option value="floating">Flotante</option><option value="top">Borde superior, autoocultar</option></select><label class="pref-check"><input type="checkbox" id="p-pin">Mantener panel abierto</label><label class="pref-check"><input type="checkbox" id="p-details">Mostrar nombre, versión y estado</label><label class="pref-check"><input type="checkbox" id="p-shadow">Sombra pequeña debajo</label><span class="muted">Sin captura al iniciar. Cerrar este panel no cambia el permiso de captura.</span></div>
       <label>Intervalo de captura (seg)</label><input id="p-interval" type="number" min="5">
       <label>Cuánto intervengo</label>
       <select id="p-frecuencia"><option value="baja">Poco</option><option value="media">Normal</option><option value="alta">Seguido</option></select>
@@ -136,6 +52,21 @@ button {padding:8px 11px;}button.primary{background:#008cff;}
       <textarea id="p-aprendidas" rows="3"></textarea>
       <div class="row"><button class="primary" id="b-guardar-prefs">Guardar</button></div>
     </div>
+    </div><div id="chat-row">
+      <input id="chat-input" placeholder="Escribir contexto..." maxlength="500">
+      <button class="primary" id="b-chat" title="Enviar">➤</button>
+    </div>
+    <div class="row" id="controles" style="display:none">
+      <button class="primary" id="b-elegir">Elegir ventana</button>
+      <button id="b-contexto">Contexto</button>
+      <details id="herramientas"><summary>Opciones</summary><div class="row">
+      <button id="b-pausa">Pausar</button>
+      <button id="b-posponer">Posponer 10 min</button>
+      
+      
+      <button id="b-prefs">Preferencias</button>
+      <button id="b-stop">Terminar</button></div></details>
+    </div>
     <div id="v-reporte" style="display:none">
       <b>Borrador del caso</b> <span class="muted">revisalo antes de compartirlo</span>
       <pre id="reporte"></pre>
@@ -143,8 +74,8 @@ button {padding:8px 11px;}button.primary{background:#008cff;}
     </div>
     <div id="v-error" class="muted"></div>
   </div>
-  <div id="pill">
-    <img id="pluma-pill" src="assets/pluma-dormida.png" alt="">
+  <div id="pill" tabindex="0" role="button" aria-label="Abrir Tercero">
+    <img id="pluma-pill" src="assets/pluma-feliz.png" alt="Abrir Tercero">
     <div id="dot"></div>
     <span class="t">tercero</span><span id="version" class="muted" style="font-size:9px"></span>
     <span class="s" id="estado">sin captura</span>
@@ -153,6 +84,6 @@ button {padding:8px 11px;}button.primary{background:#008cff;}
   </div>
 
 </div>
-<script src="renderer.js"></script>
+<button id="b-fuente" hidden></button><button id="b-reporte" hidden></button><script src="renderer.js"></script>
 </body>
 </html>

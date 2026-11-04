@@ -86,7 +86,7 @@ function createTray() {
 function createHud() {
   const { width } = screen.getPrimaryDisplay().workAreaSize;
   hud = new BrowserWindow({
-    width: 480, height: 320, x: width - 500, y: 16,
+    width: 132, height: 138, x: width - 152, y: 16,
     frame: false, transparent: true, alwaysOnTop: true, skipTaskbar: true,
     resizable: false, hasShadow: false, focusable: true,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
@@ -274,23 +274,24 @@ ipcMain.handle('hud:set-clickthrough', (_e, on) => { if (hud) hud.setIgnoreMouse
 ipcMain.on('hud:drag-to', (_e, x, y) => {
   if (!hud) return;
   const nx = Math.round(Number(x)), ny = Math.round(Number(y));
-  if (Number.isFinite(nx) && Number.isFinite(ny)) hud.setPosition(nx, ny);
+  if (Number.isFinite(nx) && Number.isFinite(ny)) {const b=hud.getBounds(),a=screen.getDisplayNearestPoint({x:nx,y:ny}).workArea;hud.setPosition(Math.max(a.x,Math.min(a.x+a.width-b.width,nx)),Math.max(a.y,Math.min(a.y+a.height-b.height,ny)));}
 });
 // Notas del chat de contexto: quedan en el registro local y entran al borrador.
 ipcMain.handle('session:note', (_e, texto) => {
-  const t = String(texto || '').trim().slice(0, 500);
+  const value=typeof texto==='object'&&texto?texto:{texto};
+  const t = String(value.texto || '').trim().slice(0, 500);
   if (!t) return { ok: false };
-  sessionLog.add({ ts: Date.now(), kind: 'nota', texto: t });
+  const replyTo=typeof value.replyTo==='string'?value.replyTo.slice(0,100):null;
+  const question=typeof value.question==='string'?value.question.slice(0,400):null;
+  sessionLog.add({ ts: Date.now(), kind: 'nota', texto: t, ...(replyTo?{replyTo,question}: {}) });
   return { ok: true };
 });
 // La ventana se achica/crece con el contenido visible: nada de area invisible que robe clics.
-ipcMain.handle('hud:set-height', (_e, h) => {
-  if (!hud) return { ok: false };
-  const b = hud.getBounds();
-  const nh = Math.max(44, Math.min(700, Math.round(Number(h) || 44)));
-  if (nh !== b.height) hud.setBounds({ x: b.x, y: b.y, width: 480, height: nh });
-  return { ok: true };
-});
+let uiState={panel:false,settings:false,dock:false,details:false};let dockTimer=null;
+function placeUi(state){if(!hud)return;uiState=state;const b=hud.getBounds(),area=screen.getDisplayMatching(b).workArea;let w=state.panel?424:(state.details?274:132);let h=state.panel?(state.settings?588:482):134;w=Math.min(w,area.width);h=Math.min(h,area.height);let x=b.x+b.width-w,y=b.y+b.height-h;if(state.dock){x=area.x+Math.round((area.width-w)/2);y=area.y;if(!state.panel)h=134;}x=Math.max(area.x,Math.min(area.x+area.width-w,x));y=Math.max(area.y,Math.min(area.y+area.height-h,y));hud.setBounds({x,y,width:w,height:h});}
+ipcMain.handle('hud:layout',(_e,state)=>{placeUi(state);return {ok:true};});
+app.whenReady().then(()=>{dockTimer=setInterval(()=>{if(!hud||hud.isDestroyed()||!uiState.dock||uiState.panel)return;const p=screen.getCursorScreenPoint(),b=hud.getBounds();const over=p.x>=b.x&&p.x<=b.x+b.width&&p.y>=b.y&&p.y<=b.y+b.height;hud.webContents.send('hud:dock-reveal',over);},160);screen.on('display-metrics-changed',()=>placeUi(uiState));});
+app.on('before-quit',()=>{if(dockTimer)clearInterval(dockTimer);});
 // Cierre visible y recuperable: la X de la isla cierra la app; se reabre con tercero.exe.
 ipcMain.handle('app:quit', () => { app.quit(); return { ok: true }; });
 ipcMain.handle('ai:status', () => ({ ...ai.status(prefs.get()), keyStored: !!metaKey }));
