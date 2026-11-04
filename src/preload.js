@@ -1,5 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('tercero', {
+  onBlur: cb=>ipcRenderer.on('hud:blur',cb),
   layout: (s) => ipcRenderer.invoke('hud:layout',s),
   onDockReveal: cb => ipcRenderer.on('hud:dock-reveal',(_e,on)=>cb(on)),
   version: () => ipcRenderer.invoke('app:version'),

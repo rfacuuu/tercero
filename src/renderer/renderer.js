@@ -41,12 +41,12 @@ $('b-onboard').onclick = async () => {
   show('v-onboarding', false); show('bienvenida', true); show('controles', true);
 };
 
-$('b-contexto').onclick = () => {closeViews();show('v-onboarding',true);show('bienvenida',false);};
-$('b-cerrar-setup').onclick = () => {show('v-onboarding',false);show('bienvenida',true);};
+$('b-contexto').onclick = () => {$('panel').classList.add('context');layout();closeViews();show('v-onboarding',true);show('bienvenida',false);};
+$('b-cerrar-setup').onclick = () => {$('panel').classList.remove('context');layout();show('v-onboarding',false);show('bienvenida',true);};
 $('b-elegir').onclick = () => abrirFuentes();
 
 async function abrirFuentes() {
-  $('panel').classList.remove('config');layout();
+  $('panel').classList.remove('config','options','context');$('panel').classList.add('source');layout();
   show('v-fuentes', true);show('bienvenida',false);
   const fuentes = await window.tercero.listSources();
   closeViews();show('v-fuentes',true);const lista = $('lista-fuentes'); lista.innerHTML = '';
@@ -56,7 +56,7 @@ async function abrirFuentes() {
     const thumb=document.createElement("img");thumb.src=f.thumb;const title=document.createElement("span");title.textContent=f.name;d.append(thumb,title);
     d.onclick = async () => {
       await window.tercero.startCapture(f.id);
-      capturando = true; show('v-fuentes', false);
+      capturando = true; show('v-fuentes', false);$('panel').classList.remove('source');layout();
       setEstado('mirando: ' + f.name.slice(0, 28), 'on');
       $('b-pausa').textContent = 'Pausar';
       $('hola').textContent = HOLA_ON;
@@ -78,7 +78,7 @@ $('b-fuente').onclick = abrirFuentes;
 $('b-stop').onclick = async () => { await window.tercero.stop(); capturando = false; setEstado('sin captura'); setExpr('dormida'); $('hola').textContent = HOLA_IDLE; };
 
 $('b-prefs').onclick = async () => {
-  closeViews();show('bienvenida',false);show('v-sugerencias',false);$('panel').classList.add('open','config');layout();
+  closeViews();show('bienvenida',false);show('v-sugerencias',false);$('panel').classList.remove('source','options','context');$('panel').classList.add('open','config');layout();
   prefs = await window.tercero.getPrefs();
   $('p-dock').value=prefs.dockMode||'floating';$('p-pin').checked=!!prefs.panelPinned;$('p-details').checked=!!prefs.showDetails;$('p-shadow').checked=!!prefs.smallShadow;
   $('p-interval').value = prefs.captureIntervalSec;
@@ -86,15 +86,14 @@ $('b-prefs').onclick = async () => {
   $('p-retencion').value = prefs.frameRetention;
   $('p-modo').value = prefs.aiMode || 'mock';
   $('p-aprendidas').value = (prefs.prefs_aprendidas || []).join('\n');
-  $('consent-estado').textContent = prefs.aiConsent ? 'activado - podés revocarlo cambiando el modo a Demo' : '';
+  $('consent-estado').textContent = prefs.aiMode==='meta'&&prefs.aiConsent ? 'IA activa con permiso. Volver a Demo lo revoca.' : 'En Demo no se envían capturas.';show('meta-consent-view',false);
   const ai = await window.tercero.aiStatus();
   $('key-estado').textContent = ai.keyStored ? 'hay una clave guardada (cifrada)' : '';
   show('v-prefs', true);
 };
-$('b-consent').onclick = async () => {
-  prefs = await window.tercero.setPrefs({ aiConsent: true });
-  $('consent-estado').textContent = 'activado - podés revocarlo cambiando el modo a Demo';
-};
+$('p-modo').onchange=()=>{if($('p-modo').value==='meta'){show('meta-consent-view',true);$('consent-estado').textContent='Requiere tu permiso en este equipo.';}else{show('meta-consent-view',false);}};
+$('b-no-consent').onclick=()=>{$('p-modo').value='mock';show('meta-consent-view',false);};
+$('b-consent').onclick=async()=>{prefs=await window.tercero.setPrefs({aiMode:'meta',aiConsent:true});$('consent-estado').textContent='Permiso guardado. Elegí una ventana para iniciar captura.';show('meta-consent-view',false);};
 $('b-guardar-key').onclick = async () => {
   const r = await window.tercero.setAiKey($('p-key').value);
   $('key-estado').textContent = r.ok ? 'clave guardada cifrada' : ('error: ' + r.error);
@@ -102,7 +101,9 @@ $('b-guardar-key').onclick = async () => {
 };
 $('b-borrar-key').onclick = async () => { await window.tercero.clearAiKey(); $('key-estado').textContent = 'clave borrada'; };
 $('b-guardar-prefs').onclick = async () => {
+  if($('p-modo').value==='meta'&&!(prefs.aiMode==='meta'&&prefs.aiConsent)){show('meta-consent-view',true);return;}
   prefs = await window.tercero.setPrefs({
+    aiConsent:$('p-modo').value==='meta'&&!!prefs.aiConsent,
     dockMode:$('p-dock').value,panelPinned:$('p-pin').checked,showDetails:$('p-details').checked,smallShadow:$('p-shadow').checked,
     captureIntervalSec: parseInt($('p-interval').value) || 20,
     frecuenciaIntervencion: $('p-frecuencia').value,
@@ -140,7 +141,7 @@ $('b-chat').onclick = enviarNota;
 $('chat-input').addEventListener('keydown', e => { if (e.key === 'Enter') enviarNota(); });
 
 window.tercero.onSuggestion(s => {
-  setExpr('emocionada', 4000);
+  setExpr('emocionada', 4000);$('panel').classList.add('suggestion');
   if(s.tipo==='pregunta'){pendingQuestion={id:s.id,texto:s.texto};$('chat-input').placeholder='Responder a esta pregunta...';}
   const c = document.createElement('div');
   c.className = 'card';
@@ -169,11 +170,15 @@ function updateCT(e) {
 document.addEventListener('mousemove', updateCT);
 document.addEventListener('mouseleave', () => { ct = true; window.tercero.setClickThrough(true); });
 
-function closeViews(){for(const id of ['v-fuentes','v-onboarding','v-prefs','v-reporte'])show(id,false);}
-function applyUi(){document.body.classList.toggle('details',!!prefs.showDetails);document.body.classList.toggle('shadow',!!prefs.smallShadow);document.body.classList.toggle('dock',prefs.dockMode==='top');$('b-pin').style.color=prefs.panelPinned?'#70b5ff':'';}
-function layout(){const panel=$('panel').classList.contains('open');document.body.classList.toggle('idle',!panel);window.tercero.layout({panel,settings:$('panel').classList.contains('config'),dock:prefs?.dockMode==='top',details:!!prefs?.showDetails});}
+function closeViews(){for(const id of ['v-fuentes','v-onboarding','v-prefs','v-reporte','v-options'])show(id,false);}
+function applyUi(){document.body.classList.toggle('details',!!prefs.showDetails);document.body.classList.toggle('shadow',!!prefs.smallShadow);document.body.classList.toggle('dock',prefs.dockMode==='top');$('b-pin').setAttribute('aria-pressed',String(!!prefs.panelPinned));$('b-pin').textContent=prefs.panelPinned?'Fijado':'Mantener abierto';}
+function layout(){const panel=$('panel').classList.contains('open');document.body.classList.toggle('idle',!panel);window.tercero.layout({panel,settings:$('panel').classList.contains('config'),dock:prefs?.dockMode==='top',details:!!prefs?.showDetails,view:$('panel').classList.contains('config')?'config':$('panel').classList.contains('source')?'source':$('panel').classList.contains('options')?'options':$('panel').classList.contains('context')?'context':$('panel').classList.contains('suggestion')?'suggestion':'empty'});}
 function togglePanel(){show('v-sugerencias',true);show('bienvenida',!$('v-sugerencias').children.length);if($('panel').classList.contains('config')){$('panel').classList.remove('config');show('v-prefs',false);}$('panel').classList.toggle('open');layout();}
-$('b-close-panel').onclick=()=>{$('panel').classList.remove('open','config');show('v-prefs',false);layout();};
+$('b-options').onclick=()=>{closeViews();show('v-sugerencias',false);show('v-options',true);$('panel').classList.remove('config','source','context');$('panel').classList.add('options');layout();};
+$('opt-back').onclick=()=>{closeViews();show('v-sugerencias',true);$('panel').classList.remove('options');layout();};
+$('opt-config').onclick=()=>$('b-settings').click();$('opt-pause').onclick=()=>$('b-pausa').click();$('opt-snooze').onclick=()=>$('b-posponer').click();$('opt-stop').onclick=()=>$('b-stop').click();
+window.tercero.onBlur(()=>{if(!prefs.panelPinned&&!$('panel').classList.contains('config')){$('panel').classList.remove('open');layout();}});
+$('b-close-panel').onclick=()=>{$('panel').classList.remove('open','config','options','source','context');closeViews();show('v-sugerencias',true);layout();};
 $('b-settings').onclick=()=>$('b-prefs').onclick();
 $('b-pin').onclick=async()=>{prefs=await window.tercero.setPrefs({panelPinned:!prefs.panelPinned});applyUi();};
 $('pill').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();togglePanel();}};

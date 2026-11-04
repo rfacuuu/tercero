@@ -93,6 +93,7 @@ function createHud() {
   // Por defecto el overlay NO intercepta clics: el renderer activa
   // interactividad solo cuando el puntero esta sobre la isla visible.
   hud.webContents.once('did-finish-load', () => { if (hud) hud.setIgnoreMouseEvents(true, { forward: true }); });
+  hud.on('blur',()=>{if(hud)hud.webContents.send('hud:blur');});
   hud.on('closed', () => { hud = null; });
   if (SMOKE) hud.webContents.once('did-finish-load', () => setTimeout(async () => {
     // Verificacion visual: abrir panel, simular sugerencia + nota de chat y capturar.
@@ -259,7 +260,7 @@ ipcMain.handle('capture:stop', () => { currentSourceId = null; stopCapture(); se
 
 ipcMain.handle('hud:snooze', (_e, minutes) => { snoozedUntil = Date.now() + Math.max(1, minutes || 10) * 60000; return { snoozedUntil }; });
 ipcMain.handle('prefs:get', () => prefs.get());
-ipcMain.handle('prefs:set', (_e, patch) => { const p = prefs.set(patch); scheduleCapture(); return p; });
+ipcMain.handle('prefs:set', (_e, patch) => { if(patch.aiMode==='mock')patch.aiConsent=false;const p = prefs.set(patch); scheduleCapture(); return p; });
 ipcMain.handle('session:recent', () => sessionLog.recent(50));
 ipcMain.handle('report:draft', () => sessionLog.buildPortfolioDraft(prefs.get()));
 ipcMain.handle('hud:feedback', (_e, id, useful) => { sessionLog.addFeedback(id, useful); return { ok: true }; });
@@ -284,7 +285,7 @@ ipcMain.handle('session:note', (_e, texto) => {
 });
 // La ventana se achica/crece con el contenido visible: nada de area invisible que robe clics.
 let uiState={panel:false,settings:false,dock:false,details:false};let dockTimer=null;
-function placeUi(state){if(!hud)return;uiState=state;const b=hud.getBounds(),area=screen.getDisplayMatching(b).workArea;let w=state.panel?424:(state.details?274:132);let h=state.panel?(state.settings?588:482):134;w=Math.min(w,area.width);h=Math.min(h,area.height);let x=b.x+b.width-w,y=b.y+b.height-h;if(state.dock){x=area.x+Math.round((area.width-w)/2);y=area.y;if(!state.panel)h=134;}x=Math.max(area.x,Math.min(area.x+area.width-w,x));y=Math.max(area.y,Math.min(area.y+area.height-h,y));hud.setBounds({x,y,width:w,height:h});}
+function placeUi(state){if(!hud)return;uiState=state;const b=hud.getBounds(),area=screen.getDisplayMatching(b).workArea;let w=state.panel?424:(state.details?274:132);const heights={empty:282,suggestion:420,source:468,options:444,context:534,config:574};let h=state.panel?(heights[state.view]||318):134;w=Math.min(w,area.width);h=Math.min(h,area.height);let x=b.x+b.width-w,y=b.y+b.height-h;if(state.dock){x=area.x+Math.round((area.width-w)/2);y=area.y;if(!state.panel)h=134;}x=Math.max(area.x,Math.min(area.x+area.width-w,x));y=Math.max(area.y,Math.min(area.y+area.height-h,y));hud.setBounds({x,y,width:w,height:h});}
 ipcMain.handle('hud:layout',(_e,state)=>{placeUi(state);return {ok:true};});
 app.whenReady().then(()=>{dockTimer=setInterval(()=>{if(!hud||hud.isDestroyed()||!uiState.dock||uiState.panel)return;const p=screen.getCursorScreenPoint(),b=hud.getBounds();const over=p.x>=b.x&&p.x<=b.x+b.width&&p.y>=b.y&&p.y<=b.y+b.height;hud.webContents.send('hud:dock-reveal',over);},160);screen.on('display-metrics-changed',()=>placeUi(uiState));});
 app.on('before-quit',()=>{if(dockTimer)clearInterval(dockTimer);});
