@@ -55,15 +55,10 @@ async function updateFromTray() {
     paused = true;
     stopCapture();
     sessionLog.add({ts: Date.now(), kind: 'update-request'});
-    const child = spawn('powershell.exe', ['-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-File',worker,'-Root',root,'-OldPid',String(process.pid),'-CurrentVersion',app.getVersion()], {detached:true, stdio:'ignore', windowsHide:false});
-    child.once('error', async e => {
-      updateBusy=false;
-      await dialog.showMessageBox({type:'error',title:'No se pudo abrir el actualizador',message:String(e.message),detail:'La captura quedo pausada. No se reemplazo la app; las notas siguen guardadas.'});
-    });
-    child.once('spawn', () => {child.unref(); app.quit();});
+    await require('./update-launch').launch({root,oldPid:process.pid,version:app.getVersion(),workerBytes:fs.readFileSync(path.join(__dirname,'update-local.ps1')),onReady:()=>app.quit()});
   } catch(e) {
     updateBusy=false;
-    await dialog.showMessageBox({type:'error',title:'No se pudo preparar la actualizacion',message:String(e.message),detail:'No se reemplazo la app.'});
+    await dialog.showMessageBox({type:'error',title:'No se pudo preparar la actualizacion',message:String(e.message),detail:'Tercero sigue abierto. No se reemplazo la app. Registro local: '+(e.log||path.join(root,'update-logs','main.jsonl'))});
   }
 }
 
@@ -94,6 +89,7 @@ function createHud() {
   hud.setAlwaysOnTop(true, 'screen-saver');
   hud.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
   hud.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  hud.webContents.once('did-finish-load',()=>{if(app.isPackaged&&process.platform==='win32'){try{const root=path.dirname(path.dirname(process.execPath));const dir=path.join(root,'update-logs');fs.mkdirSync(dir,{recursive:true});fs.appendFileSync(path.join(dir,'app-start.jsonl'),JSON.stringify({time:new Date().toISOString(),version:app.getVersion(),pid:process.pid,event:'hud-loaded'})+'\n');}catch{}}});
   // Por defecto el overlay NO intercepta clics: el renderer activa
   // interactividad solo cuando el puntero esta sobre la isla visible.
   hud.webContents.once('did-finish-load', () => { if (hud) hud.setIgnoreMouseEvents(true, { forward: true }); });
