@@ -18,6 +18,7 @@ if exist instalacion.txt (
   echo Primera vez: pega la ruta de la carpeta donde esta tercero.exe
   echo ^(ej: C:\Users\facu\Downloads\tercero-win32-x64^)
   set /p TERCERO_DIR=
+  set "TERCERO_DIR=!TERCERO_DIR:"=!"
   echo !TERCERO_DIR!>instalacion.txt
 )
 if not exist "!TERCERO_DIR!\tercero.exe" (
