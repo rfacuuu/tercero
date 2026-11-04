@@ -30,36 +30,7 @@ function showHud() {
 }
 
 async function updateFromTray() {
-  if (updateBusy) return;
-  const root = path.dirname(path.dirname(process.execPath));
-  const exe = path.join(root, 'app', 'tercero.exe');
-  if (process.platform !== 'win32' || !app.isPackaged ||
-      path.resolve(process.execPath).toLowerCase() !== exe.toLowerCase() ||
-      !fs.existsSync(path.join(root, 'actualizaciones.json'))) {
-    await dialog.showMessageBox({ type: 'info', title: 'Actualizar Tercero', message: 'Esta copia no tiene configuradas las actualizaciones privadas.', detail: 'No se cambio nada. Configura una vez la carpeta sincronizada de Drive. La instalacion no cambia.' });
-    return;
-  }
-  const answer = await dialog.showMessageBox({type: 'question', title: 'Actualizar Tercero', buttons: ['Cancelar', 'Actualizar y reiniciar'], defaultId: 0, cancelId: 0,
-    message: 'Buscar y aplicar la release disponible en tu carpeta privada de Drive?',
-    detail: 'Se pausara la captura, se guardara un borrador local de los campos pendientes y se cerrara Tercero. Drive debe estar abierto y sincronizado. Veras la version y la verificacion; si Drive esta atrasado, podria no aparecer una release nueva. No se borran preferencias ni notas. La captura NO se reanuda sola.'});
-  if (answer.response !== 1) return;
-  updateBusy = true;
-  try {
-    const draft = hud && !hud.isDestroyed() ? await hud.webContents.executeJavaScript(`(() => {
-      const ids=['chat-input','f-objetivo','f-estrategia','f-recursos','f-plazo'];
-      return Object.fromEntries(ids.map(id=>[id,document.getElementById(id)?.value || '']));
-    })()`) : {};
-    fs.writeFileSync(path.join(app.getPath('userData'), 'pending-ui-draft.json'), JSON.stringify({savedAt: new Date().toISOString(), fields: draft}, null, 2));
-    const worker = path.join(root, 'tray-update-local.ps1');
-    fs.writeFileSync(worker, fs.readFileSync(path.join(__dirname, 'update-local.ps1')));
-    paused = true;
-    stopCapture();
-    sessionLog.add({ts: Date.now(), kind: 'update-request'});
-    await require('./update-launch').launch({root,oldPid:process.pid,version:app.getVersion(),workerBytes:fs.readFileSync(path.join(__dirname,'update-local.ps1')),onReady:()=>app.quit()});
-  } catch(e) {
-    updateBusy=false;
-    await dialog.showMessageBox({type:'error',title:'No se pudo preparar la actualizacion',message:String(e.message),detail:'Tercero sigue abierto. No se reemplazo la app. Registro local: '+(e.log||path.join(root,'update-logs','main.jsonl'))});
-  }
+  await dialog.showMessageBox({type:'info', title:'Actualizar Tercero', message:'Actualiza con ACTUALIZAR-TERCERO.bat', detail:'Guarda tu trabajo y sali de Tercero desde la bandeja. Luego hace doble clic en ACTUALIZAR-TERCERO.bat. Busca la version en GitHub, verifica el paquete y vuelve a abrir Tercero. Drive no es necesario.'});
 }
 
 function createTray() {
@@ -71,7 +42,7 @@ function createTray() {
     {label:'Mostrar Tercero', click:showHud},
     {label:'Pausar captura', click:()=>{paused=true;stopCapture();sessionLog.add({ts:Date.now(),kind:'pause'});if(hud)hud.webContents.send('hud:tray-paused');}},
     {type:'separator'},
-    {label:'Actualizar a la ultima version', click:updateFromTray},
+    {label:'Como actualizar (GitHub)', click:updateFromTray},
     {type:'separator'},
     {label:'Salir de Tercero', click:()=>app.quit()}
   ]));

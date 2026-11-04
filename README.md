@@ -1,3 +1,11 @@
+## Actualizacion GitHub v0.2.5
+
+Actualizador externo: ACTUALIZAR-TERCERO.bat o actualizar-github.ps1. Usa el repositorio privado ya autenticado con Git. Guarda el trabajo y sali de Tercero antes de actualizar. No necesita Drive. Verifica version, SHA256 y respaldo antes de reemplazar el paquete; intenta restaurar si la app no abre.
+
+La interfaz fue revisada localmente. El recorrido final del actualizador NO esta comprobado en Windows. Las pruebas Windows previas se cortaron sin evidencia suficiente. No se declara validacion completa.
+
+El instalador original se conserva sin cambios. Las instrucciones historicas siguientes describen ese instalador, no el nuevo metodo de actualizacion.
+
 # Tercero 0.2.1
 
 Repositorio privado de codigo y builds. No se publico para el hackathon.

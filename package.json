@@ -1,16 +1,1 @@
-{
-  "name": "tercero",
-  "version": "0.2.4",
-  "description": "Tercero - companero de diseno en vivo (HUD Electron + Meta AI)",
-  "main": "src/main.js",
-  "license": "MIT",
-  "scripts": {
-    "start": "electron .",
-    "smoke": "xvfb-run -a electron . --smoke",
-    "pack:win": "electron-packager . tercero --platform=win32 --arch=x64 --out=dist --overwrite"
-  },
-  "devDependencies": {
-    "electron": "^45.2.2",
-    "@electron/packager": "*"
-  }
-}
+{"name":"tercero","version":"0.2.5","description":"Tercero - companero de diseno en vivo (HUD Electron + Meta AI)","main":"src/main.js","license":"MIT","scripts":{"start":"electron .","smoke":"xvfb-run -a electron . --smoke","pack:win":"electron-packager . tercero --platform=win32 --arch=x64 --out=dist --overwrite"},"devDependencies":{"electron":"^45.2.2","@electron/packager":"*"}}
