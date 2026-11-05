@@ -1,3 +1,11 @@
+## v0.3.3
+
+Tema claro/oscuro; isla blanca conservada. Ajustes organizados en Apariencia, Acompañamiento, Captura e IA y Criterio, con Inter local, iconos y controles uniformes. Nivel de explicación de tres pasos (Principiante, Intermedio, Avanzado), sin asignar experiencia por defecto; ajusta vocabulario y profundidad, no rigor. Slider con marcas finas e indicador discreto. Control de frecuencia no funcional oculto con explicación, preferencia previa conservada.
+
+Historial conserva el panel al perder foco durante análisis o con conversaciones, conserva scroll y ofrece acceso explícito al historial. Alerta de comentario/respuesta con crecimiento fijo, doble pulso y pausa, termina en 2.6s; sin desplazamiento vertical y con escala acotada en isla expandida. Respeta reducir movimiento.
+
+QA local: captura/pausa/reanudar, firma visual/pipeline sin repeticiones, historial/scroll, guardado de preferencias y nivel, permisos de conversación, errores y Demo. Inspección visual de Ajustes y alerta compacta/expandida sin recorte. Sin llamadas Meta, CI ni gastos. Windows nativo y calidad Meta real siguen sin certificar. Instalador y updater externos sin cambios.
+
 ## v0.3.2
 
 Permiso explícito para conversaciones en Ajustes: texto, comentario y contexto reciente, sin captura nueva. Se guarda hasta revocarlo o volver a Demo, sin popup nativo al enviar. Permisos anteriores sólo de imágenes no se amplían automáticamente. Errores de envío visibles, espera de respuesta y borrador conservado para reintentar; no agrega un hilo hasta recibir confirmación. Arreglo de Ajustes desde mini-chat.
