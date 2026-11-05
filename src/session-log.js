@@ -8,7 +8,7 @@ function init(dir) { file = path.join(dir, 'tercero-session.jsonl'); try { entri
 function persist() { fs.writeFileSync(file, entries.map(e => JSON.stringify(e)).join('\n') + '\n'); }
 function add(e) { entries.push(e); persist(); return e; }
 function recent(n = 20) { return entries.slice(-n); }
-function addFeedback(id, useful) { const e = entries.find(x => x.id === id); if (e) { e.useful = useful; persist(); } }
+function addFeedback(id, useful) { const e = entries.find(x => x.id === id); if (e) { e.useful = useful; persist(); return true; } return false; }
 // Deteccion barata de avance: compara longitud y muestreo del dataURL (sin decodificar).
 function frameChanged(prev,next){if(!prev||!next||prev.length!==next.length)return true;let changed=0,total=0;for(let i=0;i<next.length;i+=3){const d=(Math.abs(prev[i]-next[i])+Math.abs(prev[i+1]-next[i+1])+Math.abs(prev[i+2]-next[i+2]))/3;total+=d;if(d>18)changed++;}const pixels=next.length/3;return changed/pixels>=.012 && total/pixels>=.5;}
 // Borrador de caso de portfolio: solo con lo registrado y aprobado en sesion. Sin inventar resultados.

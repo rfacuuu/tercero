@@ -1,3 +1,11 @@
+## v0.3.1
+
+Feedback muestra check y confirmación Guardado sólo tras persistir y avisa si el comentario ya no existe. Se incorpora feedback positivo/negativo al contexto de próximos aportes. Contestar pide foco al editor y mantiene la superficie interactiva mientras el panel esté abierto. Validado con clics y escritura reales del sistema y envío IPC Demo, también en mini-chat.
+
+Prompt de diseño sin elogio automático: problema observable, efecto sobre objetivo y cambio específico; sin inventar defectos. Esto cambia la instrucción, no certifica calidad de respuestas Meta sin probarlas. Un solo ajuste Estela azul más desactivar. Más intensidad con la misma cola corta. Impacto reemplazado por luz radial intensa de 1500ms, sin anillo ni borde.
+
+QA local de captura, permisos, detener, concurrencia, pausa visual, acciones de comentarios, persistencia y contrato del prompt. Sin llamadas Meta, sin CI ni gastos. Windows nativo y calidad Meta real siguen por verificar. Instalador y updater externos intactos.
+
 ## v0.3.0
 
 Mascota regenerada sobre negro con cuatro expresiones y sombra negra. Cursor nativo intacto con partículas cortas Canvas (130ms/38px) en overlay fijo por monitor: no se mueve una ventana a cada posición. Isla compacta azul con hover detallado (estado, Demo/Meta, comentarios y fuente), brillo al pensar y al recibir respuesta. Mascota visible despierta, salta y crece levemente al recibir un comentario/respuesta; menos movimiento evita el salto.
