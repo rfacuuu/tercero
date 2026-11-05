@@ -1,3 +1,7 @@
+# 0.3.7
+
+Modo grabación temporal en Ajustes > Captura e IA. Permite capturar HUD y compañero solo por opt-in, vuelve la protección al apagar y arranca apagado en cada ejecución. No cambia permisos Meta. OBS Windows pendiente de prueba del usuario.
+
 # Notas históricas
 
 Este archivo conserva notas de desarrollo anteriores. Las instrucciones y límites actuales están en README.md. Las referencias a repositorio privado y Drive describen etapas anteriores, no el canal actual.

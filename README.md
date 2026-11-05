@@ -2,7 +2,7 @@
 
 Un compañero de diseño que vive en el escritorio. Observa la ventana que elegís, propone una mirada crítica y conversa sobre las revisiones. Vos decidís qué cambiar: Tercero no edita tu archivo.
 
-Versión disponible: **0.3.6**. Prototipo Electron para Windows x64.
+Versión disponible: **0.3.7**. Prototipo Electron para Windows x64.
 
 ## Qué hace hoy
 
@@ -30,11 +30,15 @@ La app inicia sin captura y en Demo local si no elegiste otro modo. Demo no hace
 
 Para usar Meta: abrí Ajustes, guardá tu propia clave de Meta Model API y autorizá el envío de imágenes. Las conversaciones de texto tienen un permiso separado. La clave se cifra localmente con Electron safeStorage; nunca debe añadirse al repositorio ni mostrarse en la grabación.
 
+## Grabar una demo con OBS
+
+En Ajustes > Captura e IA, activá "Permitir que se grabe Tercero en esta ejecución". Se aplica al momento, sin Guardar ajustes. Permite que otras capturas vean la UI, mascota y efectos; no cambia los permisos de Meta. Apagalo al terminar: vuelve la protección de esas ventanas. Al cerrar y volver a abrir Tercero empieza apagado. Cerrá claves y ventanas privadas antes de grabar y hacé una prueba breve en OBS. Se verificaron controles y llamadas de protección locales; la grabación final debe comprobarse en Windows.
+
 ## Actualizar una instalación existente
 
 En una instalación ya preparada con el canal GitHub, usá **Actualizar** en la bandeja. El actualizador fija el commit recibido, comprueba versión y SHA256, guarda un respaldo y trata de restaurarlo si la nueva app no abre. La captura no se reanuda automáticamente.
 
-El repositorio incluye `app.asar.b64`, el código fuente y `tercero-release-0.3.6.json`. Esos archivos no son por sí solos un instalador completo de Electron.
+El repositorio incluye `app.asar.b64`, el código fuente y `tercero-release-0.3.7.json`. Esos archivos no son por sí solos un instalador completo de Electron.
 
 Los scripts y ZIP de la versión 0.2.1 que mencionan Drive, y los lanzadores externos con una ruta Windows prefijada, son históricos o específicos de la instalación original. **No son el procedimiento actual ni un instalador actualizado desde cero.** No los uses para preparar una demo nueva; para una instalación nueva usá el código fuente con los pasos anteriores.
 

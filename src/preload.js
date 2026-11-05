@@ -1,5 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('tercero', {
+ recordingStatus:()=>ipcRenderer.invoke('recording:get'),
+ setRecording:v=>ipcRenderer.invoke('recording:set',v),
  segment:v=>ipcRenderer.invoke('review:segment',v),
  onReviewClear:cb=>ipcRenderer.on('review:clear',cb),
  focusEditor:()=>ipcRenderer.invoke('hud:focus-editor'),

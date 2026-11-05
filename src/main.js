@@ -301,6 +301,9 @@ ipcMain.handle('ai:set-key', (_e, key) => {
 });
 ipcMain.handle('ai:clear-key', () => { metaKey = ''; try { require('fs').unlinkSync(keyFile()); } catch {} return { ok: true }; });
 
+let recordingMode=false;
+ipcMain.handle('recording:get',()=>({enabled:recordingMode}));
+ipcMain.handle('recording:set',(_e,value)=>{const enabled=value?.enabled===true;if(enabled&&value?.approved!==true)return {ok:false,error:'Confirmá que la UI será visible en grabaciones.'};if(hud&&!hud.isDestroyed())hud.setContentProtection(!enabled);companion.setCaptureProtection(!enabled);recordingMode=enabled;return {ok:true,enabled};});
 ipcMain.handle('app:version', () => app.getVersion());
 ipcMain.handle('ui:draft', () => {try{const f=path.join(app.getPath('userData'),'pending-ui-draft.json');const d=JSON.parse(fs.readFileSync(f,'utf8'));fs.unlinkSync(f);return d;}catch{return null;}});
 

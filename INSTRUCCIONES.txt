@@ -1,4 +1,4 @@
-TERCERO 0.3.6
+TERCERO 0.3.7
 
 Instalación existente con canal GitHub: usar Actualizar desde la bandeja.
 No se necesita Google Drive para el canal actual.
@@ -9,3 +9,6 @@ No incluir claves ni datos privados en una demo.
 Pausar evita nuevas capturas automáticas. Terminar sesión borra las miniaturas.
 Leer usa voces locales del equipo, no Meta. SAM requiere confirmar cada envío/costo.
 Consultar usa texto y contexto reciente, sin tomar una imagen nueva.
+
+OBS: Ajustes > Captura e IA > Permitir que se grabe Tercero en esta ejecución.
+Apagalo al terminar. No persiste al cerrar Tercero. Se aplica al momento.
