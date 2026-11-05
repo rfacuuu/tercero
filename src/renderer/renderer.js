@@ -82,13 +82,13 @@ $('b-fuente').onclick = abrirFuentes;
 $('b-stop').onclick = async () => {pendingQuestion=null;comments=[];$('v-sugerencias').replaceChildren(); await window.tercero.stop(); capturando = false;selectedSource=null;goView('home'); setEstado('Sin captura'); setExpr('dormida'); $('hola').textContent = HOLA_IDLE; };
 
 $('b-prefs').onclick = async () => {
-  closeViews();show('bienvenida',false);show('v-sugerencias',false);$('panel').classList.remove('source','options','context');$('panel').classList.add('open','config');layout();
+  closeViews();show('bienvenida',false);show('v-sugerencias',false);$('panel').classList.remove('source','options','context','suggestion');$('panel').classList.add('open','config');layout();
   currentView='config';refreshHome();layout();prefs = await window.tercero.getPrefs();
   $('p-response').value=prefs.responseView||'panel';$('p-companion').value=prefs.companionMode==='fixed'?'fixed':'follow';$('p-motion').checked=!!prefs.reduceMotion;$('p-comments').value=prefs.commentPlacement||'edge';refreshSelects();$('p-dock').value=prefs.dockMode||'floating';$('p-pin').checked=!!prefs.panelPinned;$('p-details').checked=!!prefs.showDetails;$('p-shadow').checked=!!prefs.smallShadow;
   $('p-interval').value = prefs.captureIntervalSec;
   $('p-frecuencia').value = prefs.frecuenciaIntervencion;
   $('p-retencion').value = prefs.frameRetention;
-  $('p-modo').value = prefs.aiMode || 'mock';
+  $('p-modo').value = prefs.aiMode || 'mock';$('p-text-consent').checked=!!prefs.textConsent;
   $('p-aprendidas').value = (prefs.prefs_aprendidas || []).join('\n');
   $('consent-estado').textContent = prefs.aiMode==='meta'&&prefs.aiConsent ? 'IA activa con permiso. Volver a Demo lo revoca.' : 'En Demo no se envían capturas.';show('meta-consent-view',false);
   const ai = await window.tercero.aiStatus();
@@ -112,7 +112,7 @@ $('b-guardar-prefs').onclick = async () => {
     captureIntervalSec: parseInt($('p-interval').value) || 20,
     frecuenciaIntervencion: $('p-frecuencia').value,
     frameRetention: $('p-retencion').value,
-    aiMode: $('p-modo').value,
+    aiMode: $('p-modo').value,textConsent:$('p-modo').value==='meta'&&$('p-text-consent').checked,
     prefs_aprendidas: $('p-aprendidas').value.split('\n').filter(Boolean)
   });
   const ai = await window.tercero.aiStatus();
@@ -156,10 +156,11 @@ function renderComments(){const list=$('v-sugerencias');list.replaceChildren();i
  const body=document.createElement('div');body.className='comment-body';const tipo=document.createElement('div');tipo.className='tipo';tipo.textContent=s.tipo==='pregunta'?'Pregunta necesaria':'Sugerencia';const txt=document.createElement('div');txt.className='txt';txt.textContent=s.texto;const row=document.createElement('div');row.className='row';
  for(const [label,fn] of [[s.useful===true?'Me sirvió ✓':'Me sirvió',()=>saveFeedback(s,true)],[s.useful===false?'No me sirve ✓':'No me sirve',()=>saveFeedback(s,false)],['Contestar',()=>openReply(s)]]){const bt=document.createElement('button');bt.textContent=label;bt.onclick=fn;row.append(bt);}body.append(tipo,txt,row);if(s.tipo==='pregunta'||/[?¿]/.test(s.texto)){const reply=document.createElement('button');reply.className='bubble-reply';reply.textContent='Responder';reply.onclick=()=>openReply(s);body.append(reply);}
  for(const e of s.thread||[]){const item=document.createElement('div');item.className='thread-entry'+(e.ai?' ai':'');item.textContent=(e.ai?'Tercero: ':'Vos: ')+e.text;body.append(item);}
- if(s.replyOpen){const box=document.createElement('div');box.className='reply-box';const input=document.createElement('textarea');input.className='reply-input';input.placeholder='Contestar a este comentario…';input.maxLength=800;input.value=s.draft||'';input.oninput=()=>s.draft=input.value;const send=document.createElement('button');send.className='primary';send.textContent=s.sending?'Enviando…':'Enviar respuesta';send.disabled=!!s.sending;const status=document.createElement('div');status.className='reply-status';status.textContent=s.error||(s.mock?'Demo: guarda un hilo local, no consulta IA.':'Meta recibirá tu texto y el contexto reciente. No se envía una captura nueva.');
- send.onclick=async()=>{const value=input.value.trim();if(!value||s.sending)return;
- prefs=await window.tercero.getPrefs();const activeAi=await window.tercero.aiStatus();if(activeAi.mode==='meta'&&!prefs.textConsent){if(!window.confirm('Para contestar, se enviará tu texto y el contexto reciente de esta sesión a Meta. No se toma una captura nueva. ¿Permitís este envío y las respuestas siguientes?'))return;prefs=await window.tercero.setPrefs({textConsent:true});}
- s.sending=true;s.error='';renderComments();const result=await window.tercero.reply({id:s.id,text:value});s.sending=false;if(result.ok){flashAnswer();s.thread=s.thread||[];s.thread.push({text:value},{text:result.entry.texto,ai:true});s.draft='';}else s.error=result.error||'No se pudo responder.';renderComments();};box.append(input,send,status);body.append(box);}
+ if(s.replyOpen){const box=document.createElement('div');box.className='reply-box';const input=document.createElement('textarea');input.className='reply-input';input.placeholder='Contestar a este comentario…';input.maxLength=800;input.value=s.draft||'';input.oninput=()=>s.draft=input.value;const send=document.createElement('button');send.className='primary';send.textContent=s.sending?'Enviando…':'Enviar respuesta';send.disabled=!!s.sending;const status=document.createElement('div');status.className='reply-status';status.setAttribute('role','status');status.textContent=s.sending?'Enviando. Esperando respuesta…':s.error||s.delivery||(s.mock?'Demo: guarda un hilo local, no consulta IA.':'Meta recibirá tu texto y el contexto reciente. No se envía una captura nueva.');
+ send.onclick=async()=>{const value=input.value.trim();if(!value||s.sending)return;s.draft=value;s.sending=true;s.error='';renderComments();try{
+ prefs=await window.tercero.getPrefs();const activeAi=await window.tercero.aiStatus();if(activeAi.mode==='meta'&&(!prefs.aiConsent||!prefs.textConsent)){s.error='No se envió: activá Permitir conversaciones con Meta en Ajustes y guardá los cambios.';return;}
+ const result=await window.tercero.reply({id:s.id,text:value});if(result?.ok){flashAnswer();s.thread=s.thread||[];s.thread.push({text:value},{text:result.entry.texto,ai:true});s.draft='';s.delivery=activeAi.mode==='meta'?'Respuesta recibida de Meta.':'Guardado en Demo local. No se envió a Meta.';}else s.error='No se completó: '+(result?.error||'No se pudo responder. Podés reintentar.');
+ }catch(e){s.error='No se completó: '+String(e.message||e)+'. Tu texto sigue guardado para reintentar.';}finally{s.sending=false;renderComments();requestAnimationFrame(()=>{const card=[...document.querySelectorAll('.comment')].find(c=>c.dataset.id===s.id);card?.querySelector('.reply-status')?.scrollIntoView({block:'nearest'});});}};const settings=document.createElement('button');settings.className='reply-settings';settings.textContent='Abrir Ajustes';settings.onclick=()=>$('b-prefs').onclick();settings.hidden=!s.error?.includes('Ajustes');box.append(input,send,status,settings);body.append(box);}
  const note=document.createElement('div');note.className='feedback-status';note.textContent=s.feedbackError||(s.useful===true?'Guardado: te sirvió.':s.useful===false?'Guardado: no te sirve. Se tendrá en cuenta en los próximos aportes.':'');row.after(note);card.append(head,body);list.append(card);}}
 window.tercero.onSuggestion(addComment);
 window.tercero.onPipeline(message=>{$('island-state').textContent=message;const thinking=/Analizando|Preparando/.test(message);document.body.classList.toggle('is-thinking',thinking);if(thinking)setExpr('pensativa');document.body.classList.toggle('is-paused',/pausa|Sin captura/.test(message));if(selectedSource)$('session-status').textContent=message;});
@@ -176,7 +177,7 @@ function updateCT(e) {
 document.addEventListener('mousemove', updateCT);
 document.addEventListener('mouseleave', () => { if($('pill').classList.contains('dragging'))return;ct = true; window.tercero.setClickThrough(true); });
 
-function closeViews(){for(const id of ['v-fuentes','v-onboarding','v-prefs','v-reporte','v-options'])show(id,false);}
+function closeViews(){for(const id of ['v-fuentes','v-onboarding','v-prefs','v-reporte','v-options','v-consulta'])show(id,false);}
 function refreshHome(){if($('island-source')){$('island-source').textContent=selectedSource?.name||'Sin ventana elegida';$('island-mode').textContent=prefs?.aiMode==='meta'?'Meta AI':'Demo local';$('island-comments').textContent=document.querySelectorAll('#v-sugerencias .comment').length+' comentarios';}
  const home=currentView==='home';$('welcome-home').hidden=!(home&&!selectedSource);$('session-home').hidden=!(home&&!!selectedSource);
  $('source-name').textContent=selectedSource?.name||'';
@@ -186,9 +187,9 @@ function refreshHome(){if($('island-source')){$('island-source').textContent=sel
  $('panel').classList.toggle('active-session',home&&!!selectedSource);
 }
 function goView(view){
- currentView=view;closeViews();$('panel').classList.remove('config','source','context','options','suggestion');
+ currentView=view;closeViews();$('panel').classList.remove('config','source','context','options','suggestion','consulta');
  if(view!=='home')$('panel').classList.add(view);
- const map={source:'v-fuentes',context:'v-onboarding',config:'v-prefs',options:'v-options',suggestion:'v-sugerencias'};
+ const map={source:'v-fuentes',context:'v-onboarding',config:'v-prefs',options:'v-options',suggestion:'v-sugerencias',consulta:'v-consulta'};
  show('v-sugerencias',view==='suggestion');if(map[view])show(map[view],true);
  refreshHome();$('scroll-content').scrollTop=0;layout();
 }
@@ -224,3 +225,9 @@ init();
 
 window.tercero.onTrayPaused(() => {capturando=false;setEstado('pausada','paused');refreshHome();$('b-pausa').textContent='Reanudar';$('hola').textContent=HOLA_PAUSA;setExpr('dormida');});
 new ResizeObserver(()=>{if(document.body.classList.contains('bubble')&&currentView==='suggestion')layout();}).observe($('panel'));
+
+$('b-consultar').onclick=async()=>{goView('consulta');$('panel').classList.add('open');layout();await window.tercero.focusEditor();$('consult-text').focus();};
+$('consult-back').onclick=()=>goView(comments.length?'suggestion':'home');
+$('consult-send').onclick=async()=>{const text=$('consult-text').value.trim();if(!text)return;$('consult-send').disabled=true;$('consult-status').textContent='Consultando…';try{const result=await window.tercero.consult({text});if(!result?.ok){$('consult-status').textContent=result?.error||'No se completó. Tu texto se conserva.';return;}$('consult-text').value='';addComment(result.comment);}catch(e){$('consult-status').textContent='No se completó: '+String(e.message)+'. Tu texto se conserva.';}finally{$('consult-send').disabled=false;}};
+
+$('bubble-consult').onclick=()=>$('b-consultar').onclick();

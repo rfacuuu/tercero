@@ -1,3 +1,11 @@
+## v0.3.2
+
+Permiso explícito para conversaciones en Ajustes: texto, comentario y contexto reciente, sin captura nueva. Se guarda hasta revocarlo o volver a Demo, sin popup nativo al enviar. Permisos anteriores sólo de imágenes no se amplían automáticamente. Errores de envío visibles, espera de respuesta y borrador conservado para reintentar; no agrega un hilo hasta recibir confirmación. Arreglo de Ajustes desde mini-chat.
+
+Consultar inicia voluntariamente una conversación de texto con contexto de sesión, incluso en pausa o sin comentarios. No toma ni envía una imagen nueva y no reactiva captura automática. Misma autorización y controles de concurrencia; respuesta en hilo existente. Destello de respuesta breve (240ms), haz de luz sin anillo ni círculo sostenido.
+
+QA IPC con proveedor simulado: permiso ausente cero llamadas, persistencia en disco, dos respuestas sin popup, error conserva borrador y no crea hilo falso, Demo revoca, consulta en pausa sin fuente/no frame y sin reanudar. Regresiones y clics/tecleo OS Demo pasan. Sin llamadas Meta, CI ni gastos. Meta real y Windows nativo siguen por verificar. Instalador/updater externos intactos.
+
 ## v0.3.1
 
 Feedback muestra check y confirmación Guardado sólo tras persistir y avisa si el comentario ya no existe. Se incorpora feedback positivo/negativo al contexto de próximos aportes. Contestar pide foco al editor y mantiene la superficie interactiva mientras el panel esté abierto. Validado con clics y escritura reales del sistema y envío IPC Demo, también en mini-chat.

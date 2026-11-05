@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('tercero', {
   feedback: (id, useful) => ipcRenderer.invoke('hud:feedback', id, useful),
   setClickThrough: (on) => ipcRenderer.invoke('hud:set-clickthrough', on),
   dragTo: (x, y) => ipcRenderer.send('hud:drag-to', x, y),
+  consult:v=>ipcRenderer.invoke('session:consult',v),
   reply: v=>ipcRenderer.invoke('comment:reply',v),
   addNote: (t) => ipcRenderer.invoke('session:note', t),
   setHeight: (h) => ipcRenderer.invoke('hud:set-height', h),

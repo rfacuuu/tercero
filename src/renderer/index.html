@@ -59,7 +59,7 @@ body.bubble #panel.suggestion .reply-box{margin-top:5px;padding-top:7px}
 body.bubble #panel.suggestion .reply-box button{font-size:10px;min-height:24px;padding:3px 7px;margin-top:4px}
 body.bubble #panel.suggestion .reply-status{font-size:9px;line-height:1.3}
 body.bubble #panel.suggestion .thread-entry{font-size:11px;line-height:1.4;padding:6px;margin-top:5px;overflow-wrap:anywhere}
-</style><style>.feedback-status{font-size:10px;color:#557293;line-height:1.4;margin-top:5px}body.bubble .feedback-status:empty{display:none}</style></head>
+</style><style>.feedback-status{font-size:10px;color:#557293;line-height:1.4;margin-top:5px}body.bubble .feedback-status:empty{display:none}</style><style>#panel.consulta{height:420px}#panel.consulta #controles{display:none!important}#panel.consulta p{font-size:11px;line-height:1.4;margin-bottom:12px}#panel.consulta textarea{height:70px}#panel.consulta h2{font-size:20px}#panel.consulta #chat-row{display:none}#consult-send,#consult-back{margin-top:12px}#consult-status{margin-top:10px;color:#48658b}body.bubble #panel.consulta{max-height:calc(100vh - 136px)}body.bubble #panel.consulta #bubble-expand{display:none}</style><style>body.bubble #panel.suggestion #bubble-consult{display:block!important;font-size:9px;color:#1674ed;background:transparent;border:0;min-height:17px;padding:0;margin:4px 13px 0;text-align:left}</style></head>
 <body>
 <div id="isla">
   <div id="panel">
@@ -79,7 +79,7 @@ body.bubble #panel.suggestion .thread-entry{font-size:11px;line-height:1.4;paddi
       <div class="eyebrow">EMPEZAR UNA SESIÓN</div><h2>Una ventana. Vos elegís.</h2><p class="view-description">Tercero solo acompaña esta ventana. Podés cambiarla o pausar después.</p><button class="back-link" id="sources-back">‹ Volver</button>
       <div id="lista-fuentes"></div>
     </div>
-    <div id="v-options" style="display:none"><div class="eyebrow">CONTROLES</div><h2>Tu sesión, a tu ritmo.</h2><div class="row"><button id="opt-pause">Pausar / reanudar</button><button id="opt-snooze">Silenciar ideas por 10 minutos</button><button id="opt-config">Configuración</button><button id="opt-stop">Terminar sesión</button><button id="opt-back">Volver</button></div></div><div id="v-sugerencias"></div>
+    <div id="v-options" style="display:none"><div class="eyebrow">CONTROLES</div><h2>Tu sesión, a tu ritmo.</h2><div class="row"><button id="opt-pause">Pausar / reanudar</button><button id="opt-snooze">Silenciar ideas por 10 minutos</button><button id="opt-config">Configuración</button><button id="opt-stop">Terminar sesión</button><button id="opt-back">Volver</button></div></div><div id="v-consulta" style="display:none"><h2>Consultar a Tercero</h2><p>Consulta de texto con el contexto reciente de esta sesión. No toma ni envía una imagen nueva y no reanuda la captura en pausa.</p><textarea id="consult-text" maxlength="800" rows="4" placeholder="¿Qué querés consultar?"></textarea><button class="primary" id="consult-send">Enviar consulta</button><div id="consult-status" role="status" class="muted"></div><button id="consult-back">Volver</button></div><div id="v-sugerencias"></div>
     <div id="welcome-home"><div class="eyebrow">UN SEGUNDO PAR DE OJOS</div><h1>Diseñá con otra<br>perspectiva.</h1><p>Elegí una ventana. Tercero te acerca ideas<br>sin sacarte de lo que estás haciendo.</p><button class="primary" id="home-start">Elegir ventana <span>↗</span></button><div class="privacy-line"><span class="privacy-dot"></span> Vos elegís qué mirar y cuándo parar.</div></div><div id="session-home" hidden><div class="eyebrow">TU SESIÓN</div><h2 id="session-title">Acompañando tu diseño</h2><p id="source-name"></p><div class="session-status" id="session-status">Captura activa</div><div class="row"><button class="primary" id="session-pause">Pausar</button><button id="session-change">Cambiar ventana…</button></div></div><div id="bienvenida"><div class="tipo">A tu ritmo</div><div class="txt">Elegí una ventana para acompañar tu diseño. Vos decidís qué cambiar.</div></div>
     <div id="v-prefs" style="display:none">
       <div id="ui-prefs"><div class="eyebrow">AJUSTES</div><h2>A tu manera.</h2><p class="view-description">Apariencia, captura y privacidad.</p><label>Luz detrás del cursor</label><select id="p-companion"><option value="follow">Estela azul</option><option value="fixed">Desactivar efectos</option></select><div class="muted">Tu cursor normal no cambia. La luz acompaña solo mientras Tercero observa o piensa. No hace clic ni modifica el diseño.</div><label class="pref-check"><input type="checkbox" id="p-motion">Reducir movimiento</label><label>Al llegar un comentario</label><select id="p-response"><option value="panel">Abrir panel completo</option><option value="bubble">Burbuja pequeña con el mensaje</option></select><label>Comentarios en pantalla</label><select id="p-comments"><option value="edge">En el panel flotante</option><option value="near">Cerca del cursor al llegar</option></select><div class="muted">Podés mover el panel desde su cabecera. No se ancla a objetos al hacer zoom o scroll.</div><label>Vista de la mascota fija</label><select id="p-dock"><option value="floating">Flotante</option><option value="top">Borde superior, autoocultar</option></select><label class="pref-check"><input type="checkbox" id="p-pin">Mantener panel abierto</label><label class="pref-check"><input type="checkbox" id="p-details">Mostrar nombre, versión y estado</label><label class="pref-check"><input type="checkbox" id="p-shadow">Sombra pequeña debajo</label><span class="muted">Sin captura al iniciar. Cerrar este panel no cambia el permiso de captura.</span></div>
@@ -98,7 +98,7 @@ body.bubble #panel.suggestion .thread-entry{font-size:11px;line-height:1.4;paddi
         <div class="row"><button class="primary" id="b-consent">Activar con este permiso</button><button id="b-no-consent">Seguir en Demo</button>
         <span id="consent-estado" class="muted"></span></div>
       </div>
-      <label>Clave Meta Model API <span class="muted">se guarda cifrada por el sistema, nunca en texto plano</span></label>
+      <label class="pref-check"><input type="checkbox" id="p-text-consent">Permitir conversaciones con Meta</label><p class="muted">Al responder, se envían tu texto, el comentario y el contexto reciente de esta sesión a Meta. No se envía una captura nueva. El permiso queda guardado en este equipo hasta que lo desactives o vuelvas a Demo. El uso puede consumir créditos de tu cuenta Meta.</p><label>Clave Meta Model API <span class="muted">se guarda cifrada por el sistema, nunca en texto plano</span></label>
       <input id="p-key" type="password" placeholder="Pegar key (queda solo en esta PC)">
       <div class="row"><button id="b-guardar-key">Guardar clave</button><button id="b-borrar-key">Borrar clave</button><span id="key-estado" class="muted"></span></div>
       <div class="settings-section"><h3>Tu criterio</h3><p class="view-description">Reglas escritas por vos, no aprendizaje automático.</p></div><label>Tus reglas para las sugerencias</label>
@@ -111,7 +111,7 @@ body.bubble #panel.suggestion .thread-entry{font-size:11px;line-height:1.4;paddi
     </div>
     <div class="row" id="controles" style="display:none">
       <button class="primary" id="b-elegir">Elegir ventana</button>
-      <button id="b-contexto">Contexto de la pieza</button>
+      <button id="b-consultar">Consultar</button><button id="b-contexto">Contexto de la pieza</button>
       <button id="b-options">Sesión</button><details id="herramientas"><summary>Opciones</summary><div class="row">
       <button id="b-pausa">Pausar</button>
       <button id="b-posponer">Posponer 10 min</button>
@@ -125,7 +125,7 @@ body.bubble #panel.suggestion .thread-entry{font-size:11px;line-height:1.4;paddi
       <pre id="reporte"></pre>
       <div class="row"><button id="b-copiar">Copiar</button><button id="b-cerrar-reporte">Cerrar</button></div>
     </div>
-    <button id="bubble-expand" hidden>Ver panel completo</button><div id="v-error" class="muted"></div>
+    <button id="bubble-consult" style="display:none">Consultar</button><button id="bubble-expand" hidden>Ver panel completo</button><div id="v-error" class="muted"></div>
   </div>
   <div id="pill" tabindex="0" role="button" aria-label="Abrir Tercero">
     <div id="island-mini"><span class="island-brand">Tercero<span>·</span></span><span id="island-state">Sin captura</span><div id="island-details"><div class="island-detail-row"><span id="island-mode">Demo local</span><span id="island-comments">0 comentarios</span></div><div id="island-source">Sin ventana elegida</div><div class="island-detail-hint">Clic para abrir Tercero</div></div><span class="island-bar"></span></div><img id="pluma-pill" src="assets/pluma-feliz.png" alt="Abrir Tercero">

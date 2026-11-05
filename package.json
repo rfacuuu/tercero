@@ -1,6 +1,6 @@
 {
   "name": "tercero",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Tercero - companero de diseno en vivo (HUD Electron + Meta AI)",
   "main": "src/main.js",
   "license": "MIT",
