@@ -1,3 +1,13 @@
+## v0.3.5
+
+Cinco niveles de explicación: Principiante, Básico, Intermedio, Avanzado, Experto. Conserva el significado de las elecciones previas y no asume experiencia sin elegir. Cierre del panel espera pintura antes de reducir ventana y cancela cierres atrasados al reabrir. Aviso de timeout de análisis más claro y se limpia en el próximo análisis; sin retries nuevos ni aumentar límite.
+
+Muestra la misma imagen analizada junto a la revisión, en memoria volátil de sesión, sin guardarla en JSONL ni tomar otra captura. SAM 3.1 marca cajas de un elemento pedido sobre esa imagen; consulta manual con autorización visible de envío/costo por solicitud, sin consultas automáticas ni edición del archivo. Prueba real de una imagen ficticia localizó exactamente un botón. No incluye máscaras, tracking de video ni generación de imágenes.
+
+Lectura opcional con voces locales instaladas del equipo, no Meta y sin micrófono. Autolectura apagada por defecto. Ajustes permite desactivar voz, imagen y SAM y ocultar sus controles; desactivar descarta resultados SAM tardíos, apagar imagen borra caché pero no desactiva el análisis visual ya autorizado.
+
+QA local: captura real de ventana de prueba con análisis Demo y JPEG asociado al comentario; SAM real en pieza ficticia, parser/cajas, consentimiento, concurrencia y resultados obsoletos; controles/guardado/ocultamiento, conversación/permisos/errores, pausa/reanudar, firma visual y cierre. Sonido y compositor Windows requieren comprobarse en la PC del usuario. Checkpoint034 conservado antes de nuevas funciones. Sin CI ni cambios de instalador/updater.
+
 ## v0.3.3
 
 Tema claro/oscuro; isla blanca conservada. Ajustes organizados en Apariencia, Acompañamiento, Captura e IA y Criterio, con Inter local, iconos y controles uniformes. Nivel de explicación de tres pasos (Principiante, Intermedio, Avanzado), sin asignar experiencia por defecto; ajusta vocabulario y profundidad, no rigor. Slider con marcas finas e indicador discreto. Control de frecuencia no funcional oculto con explicación, preferencia previa conservada.

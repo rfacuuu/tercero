@@ -1,5 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('tercero', {
+ segment:v=>ipcRenderer.invoke('review:segment',v),
+ onReviewClear:cb=>ipcRenderer.on('review:clear',cb),
  focusEditor:()=>ipcRenderer.invoke('hud:focus-editor'),
  dragBegin:()=>ipcRenderer.send('hud:drag-begin'),dragEnd:()=>ipcRenderer.send('hud:drag-end'),
   onBlur: cb=>ipcRenderer.on('hud:blur',cb),

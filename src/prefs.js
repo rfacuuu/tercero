@@ -4,7 +4,7 @@ const path = require('path');
 let file = null;
 let data = null;
 const DEFAULTS = {
-  theme:'light',responseView:'panel',companionMode:'explore',reduceMotion:false,commentPlacement:'edge',textConsent:false,onboarded: false,dockMode:'floating',panelPinned:false,showDetails:false,smallShadow:false,
+  theme:'light',readVoice:false,voiceEnabled:true,reviewImagesEnabled:true,samEnabled:true,responseView:'panel',companionMode:'explore',reduceMotion:false,commentPlacement:'edge',textConsent:false,onboarded: false,dockMode:'floating',panelPinned:false,showDetails:false,smallShadow:false,
   objetivo: '', estrategia: '', recursos: '', plazo: '',
   captureIntervalSec: 20,
   frecuenciaIntervencion: 'media', // baja | media | alta

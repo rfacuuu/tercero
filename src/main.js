@@ -142,7 +142,7 @@ function scheduleCapture() {
 
 function pipeline(message){companion.setState(/Analizando con Meta/.test(message)?'analizando':/Demo|Preparando respuesta/.test(message)?'pensando':/pausa|permiso|clave|No se pudo/.test(message)?'pausa':'acompanando');if(hud&&!hud.isDestroyed())hud.webContents.send('hud:pipeline',message);}
 async function tickCapture() {
-  if (paused || Date.now() < snoozedUntil || !captureWin || analysisBusy || replyBusy) return;
+  if (paused || Date.now() < snoozedUntil || !captureWin || analysisBusy || replyBusy || samBusy) return;
   analysisBusy=true;const epoch=workEpoch;companion.hide(true);
   try {
     await new Promise(r=>setTimeout(r,75));
@@ -159,21 +159,23 @@ async function tickCapture() {
     lastFrame=signature; // sin avance visible, no molestar
     const p = prefs.get();
     if (TEST) fs.appendFileSync('/tmp/tick-errors.log', new Date().toISOString() + ' gate mode=' + ai.status(p).mode + ' consent=' + JSON.stringify(p.aiConsent) + ' keys=' + Object.keys(p).join(',') + '\n');
-    if(ai.status(p).mode==='meta'&&!p.aiConsent){pipeline('Meta necesita tu permiso en Ajustes.');return;}if(ai.status(p).mode==='meta'&&!ai.status(p).metaReady){pipeline('Meta necesita una clave guardada en Ajustes.');return;}pipeline(ai.status(p).mode==='meta'?'Analizando con Meta…':'Preparando una idea de Demo…'); // sin consentimiento, nada sale de la PC
+    if(ai.status(p).mode==='meta'&&!p.aiConsent){pipeline('Meta necesita tu permiso en Ajustes.');return;}if(ai.status(p).mode==='meta'&&!ai.status(p).metaReady){pipeline('Meta necesita una clave guardada en Ajustes.');return;}hud.webContents.send('hud:error','');pipeline(ai.status(p).mode==='meta'?'Analizando con Meta…':'Preparando una idea de Demo…'); // sin consentimiento, nada sale de la PC
     const entry = await ai.analyzeFrame(jpeg, p, sessionLog.recent());
     if (TEST) fs.appendFileSync('/tmp/tick-errors.log', new Date().toISOString() + ' ai-result=' + JSON.stringify(entry) + '\n');
     if(epoch!==workEpoch)return;
+    hud.webContents.send('hud:error','');
     if(!entry)pipeline('Analizado. No hay una sugerencia útil ahora.');
     if (entry) {companion.flash();pipeline('Nueva idea para tu diseño.'); // null = el criterio (mock o Meta) decidio no intervenir: no molestar
       sessionLog.add({ ts: Date.now(), kind: 'suggestion', ...entry, frameKept: prefs.get().frameRetention === 'guardar-local' });
-      hud.webContents.send('hud:suggestion', entry);if(prefs.get().commentPlacement==='near'){const c=screen.getCursorScreenPoint(),a=screen.getDisplayNearestPoint(c).workArea,b=hud.getBounds();hud.setPosition(Math.max(a.x,Math.min(a.x+a.width-b.width,c.x+35)),Math.max(a.y,Math.min(a.y+a.height-b.height,c.y+35)));}
+      if(prefs.get().reviewImagesEnabled!==false){reviewImages.set(entry.id,jpeg);while(reviewImages.size>12)reviewImages.delete(reviewImages.keys().next().value);}hud.webContents.send('hud:suggestion', {...entry,...(prefs.get().reviewImagesEnabled!==false?{reviewImage:jpeg}:{})});if(prefs.get().commentPlacement==='near'){const c=screen.getCursorScreenPoint(),a=screen.getDisplayNearestPoint(c).workArea,b=hud.getBounds();hud.setPosition(Math.max(a.x,Math.min(a.x+a.width-b.width,c.x+35)),Math.max(a.y,Math.min(a.y+a.height-b.height,c.y+35)));}
     }
   } catch (e) {
-    pipeline('No se pudo analizar. Revisá el error.');hud.webContents.send('hud:error', String(e && e.message || e));
+    pipeline('No se pudo analizar. Revisá el error.');const message=String(e&&e.message||e);hud.webContents.send('hud:error',message.includes('Meta no respondió a tiempo')?'Meta tardó demasiado en este análisis. No se reintentó la imagen. Pausá para evitar nuevas consultas.':message);
     if (TEST) fs.appendFileSync('/tmp/tick-errors.log', new Date().toISOString() + ' ' + String(e && e.stack || e) + '\n');
   }finally{analysisBusy=false;companion.hide(false);}
 }
 
+const reviewImages=new Map();let samBusy=false,samConfigEpoch=0;
 let analysisBusy=false,replyBusy=false,workEpoch=0;
 const TEST = process.argv.includes('--test-capture');
 let testWin = null;
@@ -243,7 +245,7 @@ ipcMain.handle('sources:list', async () => {
   return sources.map(s => ({ id: s.id, name: s.name, appIcon: s.appIcon ? s.appIcon.toDataURL() : null, thumb: s.thumbnail.toDataURL() }));
 });
 
-ipcMain.handle('capture:start', async (_e, sourceId) => {
+ipcMain.handle('capture:start', async (_e, sourceId) => {reviewImages.clear();if(hud)hud.webContents.send('review:clear');
   workEpoch++;currentSourceId = sourceId; paused = false;lastFrame=null;snoozedUntil=0;
   captureWin.webContents.send('capture:start-stream', sourceId);
   sessionLog.add({ ts: Date.now(), kind: 'session-start', sourceId });
@@ -253,11 +255,11 @@ ipcMain.handle('capture:start', async (_e, sourceId) => {
 
 ipcMain.handle('capture:pause', () => { paused = true; stopCapture(); sessionLog.add({ ts: Date.now(), kind: 'pause' }); return { ok: true }; });
 ipcMain.handle('capture:resume', () => { if(!currentSourceId)return {ok:false,error:'Primero elegi una ventana'};snoozedUntil=0;paused = false; if (captureWin) captureWin.webContents.send('capture:start-stream', currentSourceId); scheduleCapture(); sessionLog.add({ ts: Date.now(), kind: 'resume' }); return { ok: true }; });
-ipcMain.handle('capture:stop', () => { currentSourceId = null; stopCapture(); sessionLog.add({ ts: Date.now(), kind: 'session-stop' }); return { ok: true }; });
+ipcMain.handle('capture:stop', () => { reviewImages.clear();if(hud)hud.webContents.send('review:clear');currentSourceId = null; stopCapture(); sessionLog.add({ ts: Date.now(), kind: 'session-stop' }); return { ok: true }; });
 
 ipcMain.handle('hud:snooze', (_e, minutes) => { companion.setState('pausa');snoozedUntil = Date.now() + Math.max(1, minutes || 10) * 60000; return { snoozedUntil }; });
 ipcMain.handle('prefs:get', () => prefs.get());
-ipcMain.handle('prefs:set', (_e, patch) => { if(patch.aiMode==='mock'){patch.aiConsent=false;patch.textConsent=false;workEpoch++;}const p = prefs.set(patch); scheduleCapture(); return p; });
+ipcMain.handle('prefs:set', (_e, patch) => { if(patch.samEnabled===false||patch.reviewImagesEnabled===false){samConfigEpoch++;}if(patch.reviewImagesEnabled===false){reviewImages.clear();if(hud)hud.webContents.send('review:clear');}if(patch.aiMode==='mock'){patch.aiConsent=false;patch.textConsent=false;workEpoch++;}const p = prefs.set(patch); scheduleCapture(); return p; });
 ipcMain.handle('session:recent', () => sessionLog.recent(50));
 ipcMain.handle('report:draft', () => sessionLog.buildPortfolioDraft(prefs.get()));
 ipcMain.handle('hud:feedback', (_e, id, useful) => { return sessionLog.addFeedback(id, useful)?{ok:true,useful:!!useful}:{ok:false,error:'Este comentario ya no está en el registro. Volvé a iniciar la sesión.'}; });
@@ -304,11 +306,13 @@ ipcMain.handle('ui:draft', () => {try{const f=path.join(app.getPath('userData'),
 
 ipcMain.handle('comment:reply',async(_e,value)=>{
  const p=prefs.get(),text=String(value?.text||'').trim().slice(0,800),id=String(value?.id||'');if(!text)return {ok:false,error:'Escribí una respuesta.'};
- if(analysisBusy||replyBusy)return {ok:false,error:'Esperá a que termine el análisis actual.'};
+ if(analysisBusy||replyBusy||samBusy)return {ok:false,error:'Esperá a que termine el análisis actual.'};
  const parent=sessionLog.recent(200).find(e=>e.id===id&&e.kind==='suggestion');if(!parent)return {ok:false,error:'Ese comentario ya no está disponible.'};
  if(ai.status(p).mode==='meta'&&(!p.aiConsent||!p.textConsent))return {ok:false,error:'Falta permiso para enviar tu respuesta a Meta.'};
  replyBusy=true;const epoch=workEpoch;sessionLog.add({ts:Date.now(),kind:'nota',texto:text,replyTo:id});pipeline('Preparando respuesta…');
  try{const r=await ai.reply(text,parent,p,sessionLog.recent(20));if(epoch!==workEpoch)return {ok:false,error:'La sesión cambió. La respuesta anterior no se agregó.'};const entry={id:'sg-'+Date.now(),kind:'suggestion',ts:Date.now(),...r,replyTo:id};sessionLog.add(entry);companion.flash();pipeline('Respuesta lista.');return {ok:true,entry};}catch(e){pipeline('No se pudo responder.');return {ok:false,error:String(e.message)};}finally{replyBusy=false;}
 });
 
-ipcMain.handle('session:consult',async(_e,value)=>{const text=String(value?.text||'').trim().slice(0,800),p=prefs.get();if(!text)return {ok:false,error:'Escribí tu consulta.'};if(analysisBusy||replyBusy)return {ok:false,error:'Tercero está terminando otro análisis o respuesta. Tu consulta sigue escrita; reintentá al terminar.'};const mode=ai.status(p);if(mode.mode==='meta'&&(!p.aiConsent||!p.textConsent||!mode.metaReady))return {ok:false,error:'No se envió: revisá el permiso de conversaciones y la clave en Ajustes.'};replyBusy=true;const epoch=workEpoch,id='consult-'+Date.now();pipeline('Preparando respuesta…');try{const result=await ai.reply(text,{texto:'Consulta voluntaria de texto. No hay captura nueva; no afirmes estar viendo el diseño actual.'},p,sessionLog.recent(20));if(epoch!==workEpoch)return {ok:false,error:'La sesión cambió. La consulta no se agregó.'};const comment={id,tipo:'consulta',texto:'Consulta: '+text,mock:mode.mode==='mock',thread:[{text:result.texto,ai:true}]};sessionLog.add({id,kind:'suggestion',ts:Date.now(),texto:comment.texto,mock:comment.mock});sessionLog.add({id:id+'-reply',kind:'suggestion',replyTo:id,ts:Date.now(),...result});companion.flash();pipeline('Respuesta lista.');return {ok:true,comment};}catch(e){pipeline('No se pudo responder.');return {ok:false,error:'No se completó: '+String(e.message)+'. Tu texto sigue escrito.'};}finally{replyBusy=false;}});
+ipcMain.handle('session:consult',async(_e,value)=>{const text=String(value?.text||'').trim().slice(0,800),p=prefs.get();if(!text)return {ok:false,error:'Escribí tu consulta.'};if(analysisBusy||replyBusy||samBusy)return {ok:false,error:'Tercero está terminando otro análisis o respuesta. Tu consulta sigue escrita; reintentá al terminar.'};const mode=ai.status(p);if(mode.mode==='meta'&&(!p.aiConsent||!p.textConsent||!mode.metaReady))return {ok:false,error:'No se envió: revisá el permiso de conversaciones y la clave en Ajustes.'};replyBusy=true;const epoch=workEpoch,id='consult-'+Date.now();pipeline('Preparando respuesta…');try{const result=await ai.reply(text,{texto:'Consulta voluntaria de texto. No hay captura nueva; no afirmes estar viendo el diseño actual.'},p,sessionLog.recent(20));if(epoch!==workEpoch)return {ok:false,error:'La sesión cambió. La consulta no se agregó.'};const comment={id,tipo:'consulta',texto:'Consulta: '+text,mock:mode.mode==='mock',thread:[{text:result.texto,ai:true}]};sessionLog.add({id,kind:'suggestion',ts:Date.now(),texto:comment.texto,mock:comment.mock});sessionLog.add({id:id+'-reply',kind:'suggestion',replyTo:id,ts:Date.now(),...result});companion.flash();pipeline('Respuesta lista.');return {ok:true,comment};}catch(e){pipeline('No se pudo responder.');return {ok:false,error:'No se completó: '+String(e.message)+'. Tu texto sigue escrito.'};}finally{replyBusy=false;}});
+
+ipcMain.handle('review:segment',async(_e,value)=>{if(value?.approved!==true)return {ok:false,error:'Confirmá el envío de esta imagen y el costo antes de usar SAM.'};if(samBusy||analysisBusy||replyBusy)return {ok:false,error:'Tercero está terminando otra operación. No se envió a SAM.'};const p=prefs.get(),jpeg=reviewImages.get(String(value?.id));if(p.samEnabled===false||p.reviewImagesEnabled===false)return {ok:false,error:'La función está desactivada en Ajustes. No se envió.'};if(!jpeg)return {ok:false,error:'La imagen ya no está en esta sesión.'};const concept=String(value?.concept||'').trim().slice(0,80);if(!concept)return {ok:false,error:'Escribí el elemento que querés marcar.'};if(!p.aiConsent||!metaKey)return {ok:false,error:'SAM necesita tu permiso de imágenes y la clave de Meta en Ajustes.'};samBusy=true;const epoch=workEpoch,configEpoch=samConfigEpoch;try{const result=await require('./sam').segment(jpeg,concept,metaKey);if(configEpoch!==samConfigEpoch||prefs.get().samEnabled===false||prefs.get().reviewImagesEnabled===false||epoch!==workEpoch||reviewImages.get(String(value.id))!==jpeg)return {ok:false,error:'La sesión cambió. No se agregaron marcas a otra imagen.'};return {ok:true,...result};}catch(e){return {ok:false,error:String(e.message||e)};}finally{samBusy=false;}});
