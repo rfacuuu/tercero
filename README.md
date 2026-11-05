@@ -1,3 +1,7 @@
+## v0.3.6
+
+Corrección acotada: al guardar interruptores vuelve a dibujar comentarios existentes para quitar inmediatamente controles y miniaturas desactivados. Verificado con comentario ya abierto antes de apagar. Sin nuevas funciones ni llamadas Meta.
+
 ## v0.3.5
 
 Cinco niveles de explicación: Principiante, Básico, Intermedio, Avanzado, Experto. Conserva el significado de las elecciones previas y no asume experiencia sin elegir. Cierre del panel espera pintura antes de reducir ventana y cancela cierres atrasados al reabrir. Aviso de timeout de análisis más claro y se limpia en el próximo análisis; sin retries nuevos ni aumentar límite.

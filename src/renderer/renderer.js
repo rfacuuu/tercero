@@ -118,7 +118,7 @@ $('b-guardar-prefs').onclick = async () => {
   });
   const ai = await window.tercero.aiStatus();
   $('aiMode').textContent = ai.mode === 'mock' ? 'Demo local' : 'Meta';$('header-mode').textContent=ai.mode==='mock'?'Demo local':'Meta AI';
-  applyUi();goView('home');
+  applyUi();renderComments();goView('home');
 };
 
 $('b-reporte').onclick = async () => {
