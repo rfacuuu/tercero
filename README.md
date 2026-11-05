@@ -1,3 +1,9 @@
+## v0.2.9
+
+Preview aprobado: restaurados los PNG originales con boquita y expresiones, sombra neutra detrás de mascota. Sin glow/destello sobre mascota. Efectos del cursor dibujados con Canvas 2D: estela de historial de posiciones con desvanecimiento de 360ms, glow durante trabajo real, destello de 850ms al responder solamente junto al cursor nativo. No se dibuja cursor artificial ni PNG adicional; retirado asset B y su icono de comentarios.
+
+Iconos check/menos/abrir de 12px dentro de botones de 24px. Se conserva la pausa visual y el filtro de cambios de 0.2.8. QA local y regresiones de captura, permisos, concurrencia y comentarios sin nuevas llamadas Meta ni CI. Windows nativo/DPI/Meta E2E pendientes. Instalador/updater externos intactos.
+
 ## v0.2.8
 
 Cursor nativo intacto: se retira el PNG B del overlay y su recorrido autónomo. Estela azul sutil solo al mover, glow durante análisis/respuesta real pendiente, efectos ocultos en pausa y opción de desactivarlos. Destello de un segundo junto a la mascota al llegar un comentario/respuesta. Mascota PNG original azul sin boca, bordes limpiados y remuestreo; estados ahora comunicados por luz/texto, sin caras distintas. Iconos Phosphor core 2.1.1 MIT incluidos localmente y checks azul pálido.

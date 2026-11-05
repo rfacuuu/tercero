@@ -164,7 +164,7 @@ async function tickCapture() {
     if (TEST) fs.appendFileSync('/tmp/tick-errors.log', new Date().toISOString() + ' ai-result=' + JSON.stringify(entry) + '\n');
     if(epoch!==workEpoch)return;
     if(!entry)pipeline('Analizado. No hay una sugerencia útil ahora.');
-    if (entry) {pipeline('Nueva idea para tu diseño.'); // null = el criterio (mock o Meta) decidio no intervenir: no molestar
+    if (entry) {companion.flash();pipeline('Nueva idea para tu diseño.'); // null = el criterio (mock o Meta) decidio no intervenir: no molestar
       sessionLog.add({ ts: Date.now(), kind: 'suggestion', ...entry, frameKept: prefs.get().frameRetention === 'guardar-local' });
       hud.webContents.send('hud:suggestion', entry);if(prefs.get().commentPlacement==='near'){const c=screen.getCursorScreenPoint(),a=screen.getDisplayNearestPoint(c).workArea,b=hud.getBounds();hud.setPosition(Math.max(a.x,Math.min(a.x+a.width-b.width,c.x+35)),Math.max(a.y,Math.min(a.y+a.height-b.height,c.y+35)));}
     }
@@ -306,5 +306,5 @@ ipcMain.handle('comment:reply',async(_e,value)=>{
  const parent=sessionLog.recent(200).find(e=>e.id===id&&e.kind==='suggestion');if(!parent)return {ok:false,error:'Ese comentario ya no está disponible.'};
  if(ai.status(p).mode==='meta'&&(!p.aiConsent||!p.textConsent))return {ok:false,error:'Falta permiso para enviar tu respuesta a Meta.'};
  replyBusy=true;const epoch=workEpoch;sessionLog.add({ts:Date.now(),kind:'nota',texto:text,replyTo:id});pipeline('Preparando respuesta…');
- try{const r=await ai.reply(text,parent,p,sessionLog.recent(20));if(epoch!==workEpoch)return {ok:false,error:'La sesión cambió. La respuesta anterior no se agregó.'};const entry={id:'sg-'+Date.now(),kind:'suggestion',ts:Date.now(),...r,replyTo:id};sessionLog.add(entry);pipeline('Respuesta lista.');return {ok:true,entry};}catch(e){pipeline('No se pudo responder.');return {ok:false,error:String(e.message)};}finally{replyBusy=false;}
+ try{const r=await ai.reply(text,parent,p,sessionLog.recent(20));if(epoch!==workEpoch)return {ok:false,error:'La sesión cambió. La respuesta anterior no se agregó.'};const entry={id:'sg-'+Date.now(),kind:'suggestion',ts:Date.now(),...r,replyTo:id};sessionLog.add(entry);companion.flash();pipeline('Respuesta lista.');return {ok:true,entry};}catch(e){pipeline('No se pudo responder.');return {ok:false,error:String(e.message)};}finally{replyBusy=false;}
 });
