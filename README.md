@@ -1,120 +1,72 @@
-## v0.3.6
+# Tercero
 
-Corrección acotada: al guardar interruptores vuelve a dibujar comentarios existentes para quitar inmediatamente controles y miniaturas desactivados. Verificado con comentario ya abierto antes de apagar. Sin nuevas funciones ni llamadas Meta.
+Un compañero de diseño que vive en el escritorio. Observa la ventana que elegís, propone una mirada crítica y conversa sobre las revisiones. Vos decidís qué cambiar: Tercero no edita tu archivo.
 
-## v0.3.5
+Versión disponible: **0.3.6**. Prototipo Electron para Windows x64.
 
-Cinco niveles de explicación: Principiante, Básico, Intermedio, Avanzado, Experto. Conserva el significado de las elecciones previas y no asume experiencia sin elegir. Cierre del panel espera pintura antes de reducir ventana y cancela cierres atrasados al reabrir. Aviso de timeout de análisis más claro y se limpia en el próximo análisis; sin retries nuevos ni aumentar límite.
+## Qué hace hoy
 
-Muestra la misma imagen analizada junto a la revisión, en memoria volátil de sesión, sin guardarla en JSONL ni tomar otra captura. SAM 3.1 marca cajas de un elemento pedido sobre esa imagen; consulta manual con autorización visible de envío/costo por solicitud, sin consultas automáticas ni edición del archivo. Prueba real de una imagen ficticia localizó exactamente un botón. No incluye máscaras, tracking de video ni generación de imágenes.
+- Selección explícita de ventana, objetivo y reglas del diseño; pausa, reanudación y fin de sesión.
+- Análisis de cambios visuales con Meta Muse Spark 1.3. El primer frame es referencia; no pide análisis por cada frame ni repite automáticamente una imagen sin cambios.
+- Comentarios, respuestas y consultas de texto con contexto reciente. Consultar no toma una imagen nueva y no demuestra visión por sí solo.
+- Historial en el panel, temas claro/oscuro, mascota flotante o isla superior y cinco niveles de explicación. El nivel cambia vocabulario y profundidad, no rigor.
+- La imagen ya analizada aparece junto a su revisión. Se conserva en memoria durante la sesión, con un máximo de 12 imágenes, y no se escribe en el registro JSONL. Se borra al iniciar otra sesión, terminarla o cerrar la app.
+- SAM 3.1 localiza el elemento que escribís y muestra cajas sobre esa imagen. Cada consulta requiere confirmación de envío y costo. No juzga el diseño, no modifica el archivo y no ejecuta consultas SAM automáticas.
+- Lectura opcional de mensajes mediante voces locales instaladas en el equipo. No es voz de Meta y no usa micrófono. La autolectura está apagada por defecto.
+- Interruptores en Ajustes para ocultar y desactivar voz, miniaturas y SAM. Apagar miniaturas no detiene el análisis visual autorizado; para eso usá Pausar o Terminar sesión.
 
-Lectura opcional con voces locales instaladas del equipo, no Meta y sin micrófono. Autolectura apagada por defecto. Ajustes permite desactivar voz, imagen y SAM y ocultar sus controles; desactivar descarta resultados SAM tardíos, apagar imagen borra caché pero no desactiva el análisis visual ya autorizado.
+## Probar desde el código
 
-QA local: captura real de ventana de prueba con análisis Demo y JPEG asociado al comentario; SAM real en pieza ficticia, parser/cajas, consentimiento, concurrencia y resultados obsoletos; controles/guardado/ocultamiento, conversación/permisos/errores, pausa/reanudar, firma visual y cierre. Sonido y compositor Windows requieren comprobarse en la PC del usuario. Checkpoint034 conservado antes de nuevas funciones. Sin CI ni cambios de instalador/updater.
+Requisitos: Git, Node.js y npm. La dependencia de Electron parte de 45.2.2; npm descarga las dependencias de desarrollo.
 
-## v0.3.3
+```sh
+git clone https://github.com/rfacuuu/tercero.git
+cd tercero
+npm install
+npm start
+```
 
-Tema claro/oscuro; isla blanca conservada. Ajustes organizados en Apariencia, Acompañamiento, Captura e IA y Criterio, con Inter local, iconos y controles uniformes. Nivel de explicación de tres pasos (Principiante, Intermedio, Avanzado), sin asignar experiencia por defecto; ajusta vocabulario y profundidad, no rigor. Slider con marcas finas e indicador discreto. Control de frecuencia no funcional oculto con explicación, preferencia previa conservada.
+La app inicia sin captura y en Demo local si no elegiste otro modo. Demo no hace llamadas a Meta y sus mensajes están identificados como demostración.
 
-Historial conserva el panel al perder foco durante análisis o con conversaciones, conserva scroll y ofrece acceso explícito al historial. Alerta de comentario/respuesta con crecimiento fijo, doble pulso y pausa, termina en 2.6s; sin desplazamiento vertical y con escala acotada en isla expandida. Respeta reducir movimiento.
+Para usar Meta: abrí Ajustes, guardá tu propia clave de Meta Model API y autorizá el envío de imágenes. Las conversaciones de texto tienen un permiso separado. La clave se cifra localmente con Electron safeStorage; nunca debe añadirse al repositorio ni mostrarse en la grabación.
 
-QA local: captura/pausa/reanudar, firma visual/pipeline sin repeticiones, historial/scroll, guardado de preferencias y nivel, permisos de conversación, errores y Demo. Inspección visual de Ajustes y alerta compacta/expandida sin recorte. Sin llamadas Meta, CI ni gastos. Windows nativo y calidad Meta real siguen sin certificar. Instalador y updater externos sin cambios.
+## Actualizar una instalación existente
 
-## v0.3.2
+En una instalación ya preparada con el canal GitHub, usá **Actualizar** en la bandeja. El actualizador fija el commit recibido, comprueba versión y SHA256, guarda un respaldo y trata de restaurarlo si la nueva app no abre. La captura no se reanuda automáticamente.
 
-Permiso explícito para conversaciones en Ajustes: texto, comentario y contexto reciente, sin captura nueva. Se guarda hasta revocarlo o volver a Demo, sin popup nativo al enviar. Permisos anteriores sólo de imágenes no se amplían automáticamente. Errores de envío visibles, espera de respuesta y borrador conservado para reintentar; no agrega un hilo hasta recibir confirmación. Arreglo de Ajustes desde mini-chat.
+El repositorio incluye `app.asar.b64`, el código fuente y `tercero-release-0.3.6.json`. Esos archivos no son por sí solos un instalador completo de Electron.
 
-Consultar inicia voluntariamente una conversación de texto con contexto de sesión, incluso en pausa o sin comentarios. No toma ni envía una imagen nueva y no reactiva captura automática. Misma autorización y controles de concurrencia; respuesta en hilo existente. Destello de respuesta breve (240ms), haz de luz sin anillo ni círculo sostenido.
+Los scripts y ZIP de la versión 0.2.1 que mencionan Drive, y los lanzadores externos con una ruta Windows prefijada, son históricos o específicos de la instalación original. **No son el procedimiento actual ni un instalador actualizado desde cero.** No los uses para preparar una demo nueva; para una instalación nueva usá el código fuente con los pasos anteriores.
 
-QA IPC con proveedor simulado: permiso ausente cero llamadas, persistencia en disco, dos respuestas sin popup, error conserva borrador y no crea hilo falso, Demo revoca, consulta en pausa sin fuente/no frame y sin reanudar. Regresiones y clics/tecleo OS Demo pasan. Sin llamadas Meta, CI ni gastos. Meta real y Windows nativo siguen por verificar. Instalador/updater externos intactos.
+## Datos, permisos y costos
 
-## v0.3.1
+El análisis de Meta envía la captura de la ventana autorizada y contexto del diseño. Las respuestas de chat envían texto y contexto reciente, sin tomar una captura nueva. El contexto es limitado; no recuerda todo el historial.
 
-Feedback muestra check y confirmación Guardado sólo tras persistir y avisa si el comentario ya no existe. Se incorpora feedback positivo/negativo al contexto de próximos aportes. Contestar pide foco al editor y mantiene la superficie interactiva mientras el panel esté abierto. Validado con clics y escritura reales del sistema y envío IPC Demo, también en mini-chat.
+El registro local de sesión contiene comentarios, notas y decisiones. No se publica automáticamente y debe revisarse antes de compartirlo. Las miniaturas y cajas SAM son temporales. Las imágenes que autorizás enviar se procesan en el servicio de Meta, no exclusivamente en tu equipo.
 
-Prompt de diseño sin elogio automático: problema observable, efecto sobre objetivo y cambio específico; sin inventar defectos. Esto cambia la instrucción, no certifica calidad de respuestas Meta sin probarlas. Un solo ajuste Estela azul más desactivar. Más intensidad con la misma cola corta. Impacto reemplazado por luz radial intensa de 1500ms, sin anillo ni borde.
+Las llamadas a Meta pueden consumir créditos o generar costos. SAM imagen costaba USD 0,0025 por consulta en la tarifa revisada el 4 de noviembre de 2026. Verificá siempre la tarifa vigente. Una solicitud que agota el tiempo de espera no prueba que el proveedor no la haya procesado o cobrado; la app no la reintenta automáticamente.
 
-QA local de captura, permisos, detener, concurrencia, pausa visual, acciones de comentarios, persistencia y contrato del prompt. Sin llamadas Meta, sin CI ni gastos. Windows nativo y calidad Meta real siguen por verificar. Instalador y updater externos intactos.
+## Estado de verificación y límites
 
-## v0.3.0
+Se comprobó el flujo de captura de una ventana ficticia hasta la imagen de revisión usando análisis Demo, los permisos, pausa/reanudación, guardado, manejo de errores y descarte de resultados obsoletos. También se hizo una prueba real de SAM sobre una imagen ficticia: localizó su botón y se verificó la caja en pantalla. Esa prueba no garantiza precisión en cualquier interfaz, texto o elemento pequeño.
 
-Mascota regenerada sobre negro con cuatro expresiones y sombra negra. Cursor nativo intacto con partículas cortas Canvas (130ms/38px) en overlay fijo por monitor: no se mueve una ventana a cada posición. Isla compacta azul con hover detallado (estado, Demo/Meta, comentarios y fuente), brillo al pensar y al recibir respuesta. Mascota visible despierta, salta y crece levemente al recibir un comentario/respuesta; menos movimiento evita el salto.
+La reproducción de voces locales y la ausencia del recorte fugaz al cerrar el panel todavía necesitan confirmación en el Windows del usuario. La calidad de los comentarios de Meta varía; el modelo puede equivocarse. El silencio tras analizar también puede ser un resultado válido.
 
-Arrastre con pointer capture y seguimiento de cursor del sistema mientras el botón sigue pulsado, sin activar clickthrough al salir de la mascota. Burbuja opcional desde Ajustes (240px, altura al contenido), acceso al panel completo y Responder en preguntas; hilo flotante crece hacia arriba hasta 300px con scroll. Reutiliza respuesta real y permisos existentes, Demo no consulta IA.
+No se incluyen generación de imágenes, dictado, seguimiento de video, edición automática del diseño ni publicación automática de portfolios. El registro puede ayudar a preparar documentación; no reemplaza la revisión de un caso o reporte.
 
-QA local: captura/permisos/detener, concurrencia, pausa visual, comentarios/hilos, persistencia y arrastre rápido. Sin nuevas llamadas Meta, sin CI ni gastos. Windows nativo, DPI/múltiples monitores y Meta E2E no certificados. Instalador/updater externos sin cambios.
+## Estructura
 
-## v0.2.9
+- `src/main.js`: ventanas, permisos y coordinación del análisis.
+- `src/ai.js`: integración de visión y conversación.
+- `src/sam.js`: solicitud de imagen a SAM y lectura de cajas.
+- `src/renderer/`: interfaz, captura y recursos locales.
+- `src/session-log.js`: registro local de texto y eventos.
+- `CHANGELOG.md`: notas históricas de versiones.
 
-Preview aprobado: restaurados los PNG originales con boquita y expresiones, sombra neutra detrás de mascota. Sin glow/destello sobre mascota. Efectos del cursor dibujados con Canvas 2D: estela de historial de posiciones con desvanecimiento de 360ms, glow durante trabajo real, destello de 850ms al responder solamente junto al cursor nativo. No se dibuja cursor artificial ni PNG adicional; retirado asset B y su icono de comentarios.
+## Documentación de los servicios
 
-Iconos check/menos/abrir de 12px dentro de botones de 24px. Se conserva la pausa visual y el filtro de cambios de 0.2.8. QA local y regresiones de captura, permisos, concurrencia y comentarios sin nuevas llamadas Meta ni CI. Windows nativo/DPI/Meta E2E pendientes. Instalador/updater externos intactos.
+- https://dev.meta.ai/docs/sam/segmenting
+- https://dev.meta.ai/docs/sam/reading-segmentation
+- https://dev.meta.ai/docs/pricing-rate-limits
 
-## v0.2.8
-
-Cursor nativo intacto: se retira el PNG B del overlay y su recorrido autónomo. Estela azul sutil solo al mover, glow durante análisis/respuesta real pendiente, efectos ocultos en pausa y opción de desactivarlos. Destello de un segundo junto a la mascota al llegar un comentario/respuesta. Mascota PNG original azul sin boca, bordes limpiados y remuestreo; estados ahora comunicados por luz/texto, sin caras distintas. Iconos Phosphor core 2.1.1 MIT incluidos localmente y checks azul pálido.
-
-Pausa automática de análisis por diseño sin cambios: comparación de firma RGB reducida 64x40 en vez de bytes JPEG. Filtro visual heurístico: diferencia media de canal >18 en al menos 1.2% de píxeles y diferencia media global >=0.5. Referencia contra último análisis para acumular cambios. Sigue observación local para reanudar ante avance visible; no es pausa temporal ni reconocimiento semántico. Cambios muy pequeños pueden no superar el filtro; animaciones grandes dentro de la ventana sí pueden hacerlo.
-
-QA aislado: 10 ticks sin cambio no invocan provider, un cambio visual lo invoca una vez, 10 ticks iguales posteriores no repiten y muestran pausa. Ruido y cursor mínimo ignorados. UI Electron y regresión comentarios/permisos/streams probados; ninguna llamada Meta real ni CI ni gasto. Windows nativo/DPI/Meta E2E siguen pendientes. Instalador/updater externos intactos.
-
-## v0.2.7
-
-Mini cursor B cerámico sin rostro, proporción fija, rotación direccional, acompañar/explorar/desactivar y menos movimiento. Explorar es movimiento geométrico decorativo, no reconocimiento de Capas ni controles. No hace clic ni modifica el diseño. Mascota original conservada como launcher separado.
-
-Comentarios en tarjetas del panel flotante: minimizar, reabrir, resolver y contestar en hilo. Panel movible; opción de acercarlo al cursor al llegar. No hay anclaje automático a objetos, zoom o scroll. Contestar en Meta requiere permiso explícito para texto y contexto reciente, sin nueva imagen; Demo guarda respuestas locales sin IA. Hilos en registro local, tarjetas no restauradas al reiniciar. Controles azules, aportes Demo afirmativos y contexto reciente para reducir repetición en Meta.
-
-QA local aislado con provider simulado, sin llamadas Meta ni CI. Flujos de comentarios, permisos, concurrencia, detener y regresión de streams validados. No probado Windows nativo, DPI/múltiples monitores reales, bandeja updater ni Meta extremo a extremo. Instalador y updater externos no cambiados.
-
-## v0.2.6
-
-Interfaz con identidad Tercero, flujo de sesion y detalles legibles. Captura: corregido el stop inmediato al iniciar/reanudar y la resolucion tardia de permisos. Estados visibles para esperar imagen, analizar, falta de permiso/clave y errores. Actualizar en bandeja abre el flujo GitHub PowerShell externo con handshake antes de cerrar. Su arranque desde bandeja y Meta completo aun no estan comprobados en Windows. No se hicieron nuevas pruebas CI.
-
-## Actualizacion GitHub v0.2.5
-
-Actualizador externo: ACTUALIZAR-TERCERO.bat o actualizar-github.ps1. Usa el repositorio privado ya autenticado con Git. Guarda el trabajo y sali de Tercero antes de actualizar. No necesita Drive. Verifica version, SHA256 y respaldo antes de reemplazar el paquete; intenta restaurar si la app no abre.
-
-La interfaz fue revisada localmente. El recorrido final del actualizador NO esta comprobado en Windows. Las pruebas Windows previas se cortaron sin evidencia suficiente. No se declara validacion completa.
-
-El instalador original se conserva sin cambios. Las instrucciones historicas siguientes describen ese instalador, no el nuevo metodo de actualizacion.
-
-# Tercero 0.2.1
-
-Repositorio privado de codigo y builds. No se publico para el hackathon.
-
-## Esta version
-
-Burbuja compacta separada de Pluma, input de contexto, configuracion separada,
-menu de bandeja y actualizador con verificaciones. Voz y chat con respuestas IA
-no estan implementados. La captura solo se inicia por eleccion del usuario.
-
-## Actualizar sin reinstalar
-
-El canal de esta build es una carpeta privada de Google Drive para escritorio.
-El usuario instala Drive e inicia sesion en su cuenta personal, sin agregar
-carpetas del PC a backup. El paquete Tercero-preparar-0.2.1.zip configura una vez
-la MISMA instalacion existente, elige la carpeta sincronizada y aplica el ASAR.
-El ZIP reutiliza el runtime Windows ya instalado, no es instalador de cero.
-
-Las siguientes releases requieren actualizar solo tercero-ultima.json dentro de
-esa carpeta privada: contiene ASAR base64, version y SHA256. El boton del tray
-lee la copia sincronizada, guarda el borrador pendiente, pausa captura, verifica
-version interna, rechaza downgrade, respalda, copia, verifica y pide reapertura.
-No garantiza frescura de una copia local si Drive aun no sincronizo.
-
-GitHub conserva fuentes y artefactos; publicar aqui NO sincroniza Drive por si
-solo. El responsable de publicar un build debe actualizar tambien el manifest
-estable de Drive y verificar su lectura antes de anunciar disponibilidad.
-
-## Verificado y pendiente
-
-Render de UI y pruebas de scripts con archivos reales/procesos simulados:
-aplicacion, hash corrupto, version inconsistente, origen ausente y backup.
-Falta confirmar instalacion y actualizacion reales en Windows y sincronizacion
-Drive. No afirmar esas pruebas a partir de los tests locales.
-
-## Datos
-
-Preferencias y notas viven en el perfil Windows, fuera del paquete. No contiene
-claves, capturas, notas personales ni credenciales. Repo y carpeta Drive privados.
-Los hashes detectan corrupcion; la confianza del feed depende del acceso privado.
+El código declara licencia MIT en package.json. Los recursos de terceros conservan sus licencias: los iconos Phosphor incluyen su licencia; las fuentes Inter requieren conservar su licencia correspondiente.

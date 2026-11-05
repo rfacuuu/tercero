@@ -1,0 +1,12 @@
+node_modules/
+dist/
+app/
+*.log
+.env
+.env.*
+!.env.example
+tercero-prefs.json
+tercero-session.jsonl
+meta-key*
+update-logs/
+actualizaciones.json

@@ -1,10 +1,11 @@
-TERCERO 0.2.1
+TERCERO 0.3.6
 
-Actualizaciones privadas desde Google Drive para escritorio.
-Instalacion existente: C:\Users\Facu\tercero-nuevo-20261104-152331
-Configurar una vez con PREPARAR.cmd del ZIP Tercero-preparar-0.2.1.zip.
-El ZIP reutiliza el runtime que ya esta instalado, no es instalador de cero.
-Despues usar Actualizar a la ultima version en la bandeja.
-Drive debe estar abierto y sincronizado. La app no puede garantizar que un archivo local atrasado sea la ultima version de la nube.
-No se borran preferencias ni notas; captura no se reanuda sola.
-No usar archivos viejos de fragmentos de Drive.
+Instalación existente con canal GitHub: usar Actualizar desde la bandeja.
+No se necesita Google Drive para el canal actual.
+Instalación nueva desde código: seguir README.md (Node.js/npm y Electron).
+Los ZIP y scripts 0.2.1 de Drive son históricos, no el instalador actual.
+
+No incluir claves ni datos privados en una demo.
+Pausar evita nuevas capturas automáticas. Terminar sesión borra las miniaturas.
+Leer usa voces locales del equipo, no Meta. SAM requiere confirmar cada envío/costo.
+Consultar usa texto y contexto reciente, sin tomar una imagen nueva.
