@@ -1,3 +1,11 @@
+## v0.3.0
+
+Mascota regenerada sobre negro con cuatro expresiones y sombra negra. Cursor nativo intacto con partículas cortas Canvas (130ms/38px) en overlay fijo por monitor: no se mueve una ventana a cada posición. Isla compacta azul con hover detallado (estado, Demo/Meta, comentarios y fuente), brillo al pensar y al recibir respuesta. Mascota visible despierta, salta y crece levemente al recibir un comentario/respuesta; menos movimiento evita el salto.
+
+Arrastre con pointer capture y seguimiento de cursor del sistema mientras el botón sigue pulsado, sin activar clickthrough al salir de la mascota. Burbuja opcional desde Ajustes (240px, altura al contenido), acceso al panel completo y Responder en preguntas; hilo flotante crece hacia arriba hasta 300px con scroll. Reutiliza respuesta real y permisos existentes, Demo no consulta IA.
+
+QA local: captura/permisos/detener, concurrencia, pausa visual, comentarios/hilos, persistencia y arrastre rápido. Sin nuevas llamadas Meta, sin CI ni gastos. Windows nativo, DPI/múltiples monitores y Meta E2E no certificados. Instalador/updater externos sin cambios.
+
 ## v0.2.9
 
 Preview aprobado: restaurados los PNG originales con boquita y expresiones, sombra neutra detrás de mascota. Sin glow/destello sobre mascota. Efectos del cursor dibujados con Canvas 2D: estela de historial de posiciones con desvanecimiento de 360ms, glow durante trabajo real, destello de 850ms al responder solamente junto al cursor nativo. No se dibuja cursor artificial ni PNG adicional; retirado asset B y su icono de comentarios.
